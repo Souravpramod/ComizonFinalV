@@ -1,0 +1,260 @@
+<%- include('../../partials/admin-head') %>
+
+<body class="bg-black text-light">
+  <%- include('../../partials/admin-sidebar') %>
+
+  <div class="main-content">
+    <%- include('../../partials/admin-header') %>
+
+    <div class="admin-content p-4">
+
+      <% if (locals.error) { %>
+    <div class="alert alert-danger alert-dismissible fade show rounded-0">
+      <%= error %>
+    </div>
+    <% } %>
+      <% if (locals.success) { %>
+        <div class="alert alert-success alert-dismissible fade show rounded-0" role="alert">
+          <%= success %>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      <% } %>
+
+      <div class="admin-header mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h4 class="mb-0" style="color:var(--admin-gold);">Edit Product</h4>
+            <p class="text-muted small mb-0">Update product details</p>
+          </div>
+          <a href="/admin/products" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Products
+          </a>
+        </div>
+      </div>
+
+      <div class="admin-table p-4">
+        <form id="editProductForm" action="/admin/products/edit/<%= product._id %>" method="POST" enctype="multipart/form-data" novalidate>
+          <div class="row">
+            <div class="col-md-8">
+              <div class="mb-3">
+                <label class="form-label">Product Name</label>
+                <input type="text" class="form-control" name="productName" id="edit_productName" value="<%= product.productName %>">
+                <div class="invalid-feedback" id="err_productName"></div>
+              </div>
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Category</label>
+                  <select class="form-select" name="categoryId" id="edit_categoryId">
+                    <option value="">Select Category</option>
+                    <% if (locals.categories) { %>
+                      <% categories.forEach(cat => { %>
+                        <option value="<%= cat._id %>"
+                          <%= product.categoryId && product.categoryId.toString() === cat._id.toString() ? 'selected' : '' %>>
+                          <%= cat.categoryName %>
+                        </option>
+                      <% }) %>
+                    <% } %>
+                  </select>
+                  <div class="invalid-feedback" id="err_categoryId"></div>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Author</label>
+                  <input type="text" class="form-control" name="author" value="<%= product.author || '' %>">
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Publisher</label>
+                  <input type="text" class="form-control" name="publisher" value="<%= product.publisher || '' %>">
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Premium</label>
+                  <select class="form-select" name="isPremium">
+                    <option value="false" <%= !product.isPremium ? 'selected' : '' %>>NO</option>
+                    <option value="true"  <%= product.isPremium  ? 'selected' : '' %>>YES</option>
+                  </select>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Price ($)</label>
+                  <input type="number" class="form-control" name="price" id="edit_price" value="<%= product.price %>" step="0.01">
+                  <div class="invalid-feedback" id="err_price"></div>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label class="form-label">Stock Quantity</label>
+                  <input type="number" class="form-control" name="stockQuantity" id="edit_stockQuantity" value="<%= product.stockQuantity %>">
+                  <div class="invalid-feedback" id="err_stockQuantity"></div>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Description</label>
+                <textarea class="form-control" name="description" rows="4"><%= product.description || '' %></textarea>
+              </div>
+            </div>
+            <div class="col-md-4">
+  <label class="form-label">Images</label>
+
+  <% for(let i = 0; i < 3; i++){ %>
+  <div class="mb-4">
+
+    <!-- SEPARATE name per slot: image_0 / image_1 / image_2 -->
+    <input type="file"
+           name="image_<%= i %>"
+           id="editImage<%= i %>"
+           class="form-control mb-1"
+           data-index="<%= i %>">
+
+    <!-- Hidden flag: set to "1" when user clicks Delete -->
+    <input type="hidden"
+           name="deleteImage_<%= i %>"
+           id="deleteImage<%= i %>"
+           value="0">
+
+    <!-- FILENAME -->
+    <div class="small text-muted mb-2" id="filename<%= i %>">
+      <% if(product.images && product.images[i]){ %>
+        <%= product.images[i].split('/').pop() %>
+      <% } else { %>
+        No image
+      <% } %>
+    </div>
+
+    <!-- DELETE BUTTON -->
+    <button type="button"
+            class="btn btn-sm btn-danger mb-2 delete-image-btn"
+            data-index="<%= i %>">
+      Delete
+    </button>
+
+    <!-- IMAGE PREVIEW -->
+    <div id="preview<%= i %>">
+      <% if(product.images && product.images[i]){ %>
+        <img src="<%= product.images[i] %>"
+             style="width:120px;height:160px;object-fit:cover;border-radius:6px">
+      <% } else { %>
+        <div style="width:120px;height:160px;background:#222;
+                    display:flex;align-items:center;justify-content:center">
+          Empty
+        </div>
+      <% } %>
+    </div>
+
+  </div>
+  <% } %>
+
+  <small class="text-muted">
+    Upload only the image you want to replace. Others will remain unchanged.
+  </small>
+</div>
+            </div>
+          </div>
+          <div class="d-flex justify-content-end gap-2 mt-3">
+            <a href="/admin/products" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-admin-primary">
+              <i class="fas fa-save me-2"></i>Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+<script>
+  const croppers = {};
+
+  // ── Cropper: one per slot ──────────────────────────────────────────────────
+  for (let i = 0; i < 3; i++) {
+    const input = document.getElementById('editImage' + i);
+
+    input.addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // Clear the delete flag if user picks a new file
+      document.getElementById('deleteImage' + i).value = '0';
+
+      const reader = new FileReader();
+      reader.onload = function (ev) {
+        const preview = document.getElementById('preview' + i);
+        preview.innerHTML = '<img id="cropImage' + i + '" style="max-width:120px;">';
+
+        const img = document.getElementById('cropImage' + i);
+        img.src = ev.target.result;
+
+        if (croppers[i]) croppers[i].destroy();
+        croppers[i] = new Cropper(img, { aspectRatio: 3 / 4, viewMode: 1 });
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ── Delete buttons ─────────────────────────────────────────────────────────
+  document.querySelectorAll('.delete-image-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const i = parseInt(this.getAttribute('data-index'));
+
+      // 1. Set the hidden flag so the backend knows to remove this slot
+      document.getElementById('deleteImage' + i).value = '1';
+
+      // 2. Clear the file input so no upload is sent for this slot
+      const fileInput = document.getElementById('editImage' + i);
+      fileInput.value = '';
+
+      // 3. Destroy any active cropper for this slot
+      if (croppers[i]) { croppers[i].destroy(); delete croppers[i]; }
+
+      // 4. Show "Empty" placeholder
+      document.getElementById('preview' + i).innerHTML =
+        '<div style="width:120px;height:160px;background:#222;' +
+        'display:flex;align-items:center;justify-content:center">Empty</div>';
+
+      // 5. Clear filename label
+      document.getElementById('filename' + i).textContent = 'No image';
+    });
+  });
+
+  // ── Form submit ────────────────────────────────────────────────────────────
+  document.getElementById('editProductForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    // Clear previous inline errors
+    ['productName', 'categoryId', 'price', 'stockQuantity'].forEach(function (field) {
+      const input = document.getElementById('edit_' + field);
+      const errEl = document.getElementById('err_' + field);
+      if (input) input.classList.remove('is-invalid');
+      if (errEl) errEl.textContent = '';
+    });
+
+    const formData = new FormData(this);
+
+    try {
+      const res  = await fetch(this.action, { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (!data.ok && data.fieldErrors) {
+        Object.entries(data.fieldErrors).forEach(function ([field, msg]) {
+          const input = document.getElementById('edit_' + field);
+          const errEl = document.getElementById('err_' + field);
+          if (input) input.classList.add('is-invalid');
+          if (errEl) errEl.textContent = msg;
+        });
+        return;
+      }
+
+      window.location.href = '/admin/products?success=Product+updated+successfully';
+    } catch (err) {
+      console.error('Edit product error:', err);
+    }
+  });
+</script>
+
+</body>
+</html>

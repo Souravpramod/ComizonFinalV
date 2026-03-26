@@ -1,0 +1,274 @@
+<%- include('../partials/user-head', { title: 'About Us' }) %>
+
+<body class="bg-black text-light">
+
+<%- include('../partials/header') %>
+
+<!-- HERO -->
+<!-- HERO -->
+<header class="hero-section d-flex align-items-center justify-content-center text-center"
+style="height:60vh;min-height:400px;background-image:url('https://res.cloudinary.com/deutxfkar/image/upload/v1773056647/6.-pe600814_color-1024x713_nuntjk.jpg');background-size:cover;background-position:center;margin-top:76px;border-bottom:4px solid #E63946;">
+<div class="container position-relative z-2">
+<h1 class="display-3 fw-bold text-uppercase hero-title">Our <span class="text-danger">Story</span></h1>
+<p class="lead text-white-50">Exploring the Universe of Imagination</p>
+</div>
+<div class="hero-overlay"></div>
+</header>
+
+
+<section class="py-5 border-bottom border-secondary">
+<div class="container">
+<div class="row justify-content-center">
+<div class="col-lg-10">
+
+<h2 class="fw-bold text-danger mb-4">What are comics?</h2>
+
+<p class="lead text-secondary">
+Comics are a medium used to express ideas through images, often combined with text or visual storytelling.
+</p>
+
+<p class="text-white-50">
+It typically takes the form of sequential panels that guide the reader through a narrative. Dialogue,
+narration and sound effects are expressed through speech balloons, captions and visual symbols.
+</p>
+
+<p class="text-white-50">
+Across history, comics evolved differently across cultures. American superhero comics, European
+graphic novels and Japanese manga shaped modern storytelling.
+</p>
+
+<p class="text-white-50">
+Today comics represent art, philosophy, creativity and imagination.
+</p>
+
+</div>
+</div>
+</div>
+</section>
+
+
+<!-- ABOUT COMIZON -->
+<section class="py-5 bg-dark border-bottom border-secondary">
+<div class="container">
+<div class="row align-items-center">
+
+<div class="col-lg-6 mb-4">
+
+<h2 class="fw-bold mb-3">
+Welcome to <span class="text-danger">COMIZON</span>
+</h2>
+
+<p class="lead text-white">
+At COMIZON, we believe stories shape the way we see the world.
+</p>
+
+<p class="text-white-50">
+What started as a love for comic books has grown into a premium destination
+for collectors, readers and enthusiasts.
+</p>
+
+<p class="text-white-50">
+From iconic American comics and legendary manga to collectibles and figurines,
+Comizon brings imagination and storytelling together.
+</p>
+
+<h4 class="text-danger mt-4">Our Mission</h4>
+
+<p class="text-white-50">
+Celebrate imagination, reward curiosity and empower readers to explore worlds beyond reality.
+</p>
+
+</div>
+
+<div class="col-lg-6 text-center">
+
+<div class="p-5 border border-secondary">
+<i class="fas fa-book-open fa-5x text-danger mb-3"></i>
+
+<h3 class="logo-text">
+READ BOLD.<br>
+COLLECT SMART.<br>
+THINK DEEPER.
+</h3>
+
+</div>
+
+</div>
+
+</div>
+</div>
+</section>
+
+
+
+<!-- WHAT WE OFFER -->
+<section class="py-5 border-bottom border-secondary">
+
+<div class="container">
+
+<h2 class="text-center fw-bold mb-5">What We Offer</h2>
+
+<div class="row g-4">
+
+<div class="col-md-6 col-lg-3">
+<div class="p-4 border border-secondary h-100">
+<i class="fas fa-mask fa-2x text-danger mb-3"></i>
+<h4 class="fw-bold">American Comics</h4>
+<p class="text-white-50 small">Classic and modern titles from legendary universes.</p>
+</div>
+</div>
+
+<div class="col-md-6 col-lg-3">
+<div class="p-4 border border-secondary h-100">
+<i class="fas fa-book fa-2x text-danger mb-3"></i>
+<h4 class="fw-bold">Manga</h4>
+<p class="text-white-50 small">From timeless favorites to trending Japanese series.</p>
+</div>
+</div>
+
+<div class="col-md-6 col-lg-3">
+<div class="p-4 border border-secondary h-100">
+<i class="fas fa-robot fa-2x text-danger mb-3"></i>
+<h4 class="fw-bold">Collectibles</h4>
+<p class="text-white-50 small">Premium action figures and collector merchandise.</p>
+</div>
+</div>
+
+<div class="col-md-6 col-lg-3">
+<div class="p-4 border border-warning h-100">
+<i class="fas fa-microscope fa-2x text-warning mb-3"></i>
+<h4 class="fw-bold text-warning">Be Skeptic</h4>
+<p class="text-white-50 small">Scientific and rational books for curious minds.</p>
+</div>
+</div>
+
+</div>
+</div>
+
+</section>
+
+
+
+<!-- PREMIUM MEMBERSHIP -->
+<section class="py-5 border-bottom border-secondary">
+
+<div class="container">
+
+<div class="p-5 border border-warning">
+
+<div class="row align-items-center">
+
+<div class="col-lg-8">
+
+<span class="badge bg-warning text-dark mb-3">PREMIUM MEMBERSHIP</span>
+
+<h2 class="fw-bold mb-3">
+We believe curiosity deserves rewards.
+</h2>
+
+<ul class="list-unstyled text-white-50">
+
+<li class="mb-2"><i class="fas fa-check text-warning me-2"></i> Exclusive skeptic section</li>
+<li class="mb-2"><i class="fas fa-check text-warning me-2"></i> Premium products</li>
+<li class="mb-2"><i class="fas fa-check text-warning me-2"></i> Early access to releases</li>
+<li class="mb-2"><i class="fas fa-check text-warning me-2"></i> Knowledge focused community</li>
+
+</ul>
+
+<p class="fw-bold">
+Available for $100 / ₹6000 — one-time membership.
+</p>
+
+</div>
+
+
+<div class="col-lg-4 text-center">
+
+<% if(locals.sessionUser && locals.sessionUser.isPremium){ %>
+
+<h3 class="text-warning fw-bold">Hi Skeptic 👋</h3>
+
+<% } else { %>
+
+<a href="/premium" class="btn btn-outline-warning btn-lg fw-bold">
+JOIN NOW
+</a>
+
+<% } %>
+
+</div>
+
+</div>
+</div>
+</div>
+
+</section>
+
+
+
+<!-- COMMUNITY -->
+<section class="py-5 text-center">
+
+<div class="container">
+
+<h2 class="fw-bold mb-4">
+Built for the <span class="text-danger">Community</span>
+</h2>
+
+<p class="lead text-white-50 mb-5">
+Comizon is more than a store — it is a community for fans,
+collectors and thinkers.
+</p>
+
+<div class="row justify-content-center g-4 mb-5">
+
+<div class="col-md-auto">
+<i class="fas fa-check-circle text-danger me-2"></i> Curated collections
+</div>
+
+<div class="col-md-auto">
+<i class="fas fa-check-circle text-danger me-2"></i> Premium experience
+</div>
+
+<div class="col-md-auto">
+<i class="fas fa-check-circle text-danger me-2"></i> Secure shopping
+</div>
+
+<div class="col-md-auto">
+<i class="fas fa-check-circle text-danger me-2"></i> Passion & purpose
+</div>
+
+</div>
+
+
+<!-- CTA BUTTON -->
+
+<% if(!locals.sessionUser){ %>
+
+<a href="/signup" class="btn btn-danger btn-lg px-5">
+Get Started
+</a>
+
+<% } else if(locals.sessionUser.isPremium){ %>
+
+<a href="/premium" class="btn btn-warning btn-lg px-5 fw-bold">
+Explore Premium
+</a>
+
+<% } else { %>
+
+<a href="/profile" class="btn btn-danger btn-lg px-5">
+Go to Profile
+</a>
+
+<% } %>
+
+</div>
+
+</section>
+
+
+<%- include('../partials/footer') %>
+
+</body>
+</html>
