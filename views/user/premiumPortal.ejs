@@ -1,0 +1,226 @@
+<% 
+const products = Array.isArray(locals.products) ? locals.products : [];
+const totalProducts = typeof locals.totalProducts === 'number' ? locals.totalProducts : products.length;
+const totalPages = typeof locals.totalPages === 'number' ? locals.totalPages : 1;
+const currentPage = typeof locals.currentPage === 'number' ? locals.currentPage : 1;
+const activeCategory = typeof locals.activeCategory === 'string' ? locals.activeCategory : 'all';
+const sort = typeof locals.sort === 'string' ? locals.sort : 'featured';
+const search = typeof locals.search === 'string' ? locals.search : '';
+const dbCats = Array.isArray(locals.dbCategories) ? locals.dbCategories : [];
+const categories = [ { key: 'all', label: 'All' }, ...dbCats.map(c => ({ key: c._id.toString(), label: c.categoryName })) ];
+%>
+
+<%- include('../partials/user-head', { title: 'Premium Portal' }) %>
+
+<body class="bg-black text-light">
+
+<%- include('../partials/header') %>
+
+<!-- HERO -->
+<header class="hero-section d-flex align-items-center"
+  style="height:80vh;min-height:600px;background-image:url('https://res.cloudinary.com/deutxfkar/image/upload/v1773117618/heroimage-p_g7dtrv.png');background-size:cover;background-position:center;margin-top:76px;border-bottom:4px solid #FFD700;">
+  <div class="container position-relative z-2">
+    <div class="row">
+      <div class="col-lg-8">
+        <span class="text-warning fw-bold small mb-2 d-block">MEMBER EXCLUSIVE</span>
+        <h1 class="display-1 fw-bold text-uppercase hero-title">Think <span class="text-warning">Deeper</span></h1>
+        <p class="lead mb-4 text-white-50">Exclusive books and collectibles curated only for Premium members.</p>
+      </div>
+    </div>
+  </div>
+  <div class="hero-overlay"></div>
+</header>
+
+<!-- CATEGORY PILLS -->
+<section class="py-4 border-bottom border-secondary" style="background:#0d0d0d;">
+  <div class="container">
+    <div class="d-flex flex-wrap gap-2">
+      <% categories.forEach(cat => { %>
+        <a href="/premium?category=<%= cat.key %>&page=1&sort=<%= sort %>&search=<%= encodeURIComponent(search) %>"
+          class="category-pill <%= activeCategory === cat.key ? 'active' : '' %>" style="border-color:#FFD700;color:<%= activeCategory === cat.key ? '#000' : '#FFD700' %>;background:<%= activeCategory === cat.key ? '#FFD700' : 'transparent' %>;">
+          <%= cat.label %>
+        </a>
+      <% }) %>
+    </div>
+  </div>
+</section>
+
+<!-- PRODUCTS -->
+<section class="container py-5">
+  <div class="row">
+
+    <!-- Sidebar -->
+    <aside class="col-lg-3 mb-4">
+      <div class="filter-card bg-dark p-4 rounded-0 border border-secondary">
+
+        <h4 class="text-uppercase fw-bold mb-4"><i class="fas fa-filter text-warning me-2"></i>Categories</h4>
+        <ul class="list-unstyled category-list">
+          <% categories.forEach(cat => { %>
+            <li>
+              <a href="/premium?category=<%= cat.key %>&page=1&sort=<%= sort %>&search=<%= encodeURIComponent(search) %>"
+                class="<%= activeCategory === cat.key ? 'active' : '' %>"
+                style="<%= activeCategory === cat.key ? 'color:#FFD700;' : '' %>">
+                <%= cat.label %>
+              </a>
+            </li>
+          <% }) %>
+        </ul>
+
+        <hr class="border-secondary my-4">
+
+        <h5 class="fw-bold mb-3">Search</h5>
+        <form action="/premium" method="GET">
+          <input type="hidden" name="category" value="<%= activeCategory %>">
+          <input type="hidden" name="sort" value="<%= sort %>">
+          <input type="hidden" name="page" value="1">
+          <div class="input-group">
+            <input type="text" class="form-control bg-black text-light border-secondary rounded-0 shadow-none"
+              name="search" placeholder="Search premium..." value="<%= search %>">
+            <button class="btn btn-warning rounded-0" type="submit"><i class="fas fa-search"></i></button>
+          </div>
+        </form>
+
+        <hr class="border-secondary my-4">
+
+<h5 class="fw-bold mb-3">Price Range</h5>
+
+<form action="/premium" method="GET">
+  <input type="hidden" name="category" value="<%= activeCategory %>">
+  <input type="hidden" name="sort" value="<%= sort %>">
+  <input type="hidden" name="search" value="<%= search %>">
+  <input type="hidden" name="page" value="1">
+
+  <div class="mb-2">
+    <input type="range"
+      class="form-range"
+      name="maxPrice"
+      min="0"
+      max="500"
+      step="5"
+      value="<%= typeof locals.maxPrice !== 'undefined' ? locals.maxPrice : 500 %>"
+      oninput="document.getElementById('priceValue').innerText=this.value">
+  </div>
+
+  <div class="d-flex justify-content-between text-muted small mb-3">
+    <span>$0</span>
+    <span>$<span id="priceValue"><%= typeof locals.maxPrice !== 'undefined' ? locals.maxPrice : 500 %></span></span>
+  </div>
+
+  <button class="btn btn-warning btn-sm w-100">Apply</button>
+</form>
+
+      </div>
+    </aside>
+
+    <!-- Product Grid -->
+    <main class="col-lg-9">
+
+      <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-secondary pb-3">
+        <h2 class="text-white fw-bold text-uppercase border-start border-4 ps-3 mb-0" style="border-color:#FFD700 !important;">
+          Premium Collection
+          <% if (search) { %><span class="text-muted fs-6 ms-2 text-lowercase fw-normal">"<%= search %>"</span><% } %>
+        </h2>
+        <div class="d-flex align-items-center gap-3">
+          <span class="text-muted small">Showing <%= products.length %> of <%= totalProducts %></span>
+          <select class="form-select form-select-sm bg-black text-light border-secondary rounded-0 shadow-none"
+            onchange="location.href='/premium?sort='+this.value+'&category=<%= activeCategory %>&page=<%= currentPage %>&search=<%= encodeURIComponent(search) %>'">
+            <option value="featured" <%= sort==='featured'?'selected':'' %>>Sort: Featured</option>
+            <option value="az"       <%= sort==='az'      ?'selected':'' %>>A–Z</option>
+            <option value="za"       <%= sort==='za'      ?'selected':'' %>>Z–A</option>
+            <option value="low"      <%= sort==='low'     ?'selected':'' %>>Price: Low–High</option>
+            <option value="high"     <%= sort==='high'    ?'selected':'' %>>Price: High–Low</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row g-4">
+        <% if (products.length > 0) { %>
+          <% products.forEach(p => { %>
+            <div class="col-md-4">
+              <div class="card product-card h-100 bg-transparent border border-secondary rounded-0"
+                   onclick="location.href='/product/<%= p._id %>'" style="cursor:pointer;">
+                <div class="card-img-wrapper position-relative overflow-hidden">
+
+                  <img src="<%= p.image %>"
+                      onerror="this.src='https://placehold.co/300x450/1a1a1a/FFD700?text=Premium'"
+                      class="card-img-top" alt="<%= p.name %>">
+
+                  <!-- Wishlist button -->
+                  <form action="/wishlist/add/<%= p._id %>" method="POST" onclick="event.stopPropagation()">
+                    <button type="submit"
+                            class="btn btn-light btn-sm position-absolute top-0 end-0 m-2 rounded-circle wishlist-btn"
+                            title="Add to Wishlist">
+                      <i class="far fa-heart text-danger"></i>
+                    </button>
+                  </form>
+
+                  <!-- Premium badge -->
+                  <span class="badge bg-warning text-dark position-absolute top-0 start-0 m-2 rounded-0">
+                    PREMIUM
+                  </span>
+
+                </div>
+                <div class="card-body">
+                  <div class="text-muted small mb-1"><%= p.category %></div>
+                  <h5 class="card-title fw-bold text-truncate text-white"><%= p.name %></h5>
+                  <div class="d-flex align-items-center mb-2">
+                    <% const full = Math.floor(p.rating || 0); const half = (p.rating || 0) % 1 >= 0.25 && (p.rating || 0) % 1 < 0.75; %>
+                    <div class="text-warning small me-2">
+                      <% for(let i=0;i<full;i++){ %><i class="fas fa-star"></i><% } %>
+                      <% if(half){ %><i class="fas fa-star-half-alt"></i><% } %>
+                      <% for(let i=0;i<(5-full-(half?1:0));i++){ %><i class="far fa-star"></i><% } %>
+                    </div>
+                    <span class="text-muted small">(<%= p.reviews || 0 %>)</span>
+                  </div>
+                  <div class="d-flex justify-content-between align-items-center mt-3">
+                    <h4 class="text-white mb-0">$<%= Number(p.price).toFixed(2) %></h4>
+                    <form action="/cart/add/<%= p._id %>" method="POST" onclick="event.stopPropagation()">
+                      <button type="submit" class="btn btn-outline-warning btn-sm rounded-0">
+                        <i class="fas fa-cart-plus"></i> Add
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% }) %>
+        <% } else { %>
+          <div class="col-12 text-center py-5">
+            <p class="text-muted">No premium products found.</p>
+          </div>
+        <% } %>
+      </div>
+
+      <% if (totalPages > 1) { %>
+        <nav aria-label="Page navigation" class="mt-5 d-flex justify-content-center">
+          <ul class="pagination">
+            <li class="page-item <%= currentPage===1?'disabled':'' %>">
+              <a class="page-link bg-dark text-white border-secondary"
+                href="/premium?page=<%= currentPage-1 %>&category=<%= activeCategory %>&sort=<%= sort %>&search=<%= encodeURIComponent(search) %>"
+                <%= currentPage===1?'tabindex="-1" aria-disabled="true"':'' %>>Previous</a>
+            </li>
+            <% for (let i=1; i<=totalPages; i++) { %>
+              <li class="page-item <%= i===currentPage?'active':'' %>">
+                <a class="page-link <%= i===currentPage?'text-dark border-warning':'bg-dark text-white border-secondary' %>"
+                   style="<%= i===currentPage?'background:#FFD700;':'' %>"
+                   href="/premium?page=<%= i %>&category=<%= activeCategory %>&sort=<%= sort %>&search=<%= encodeURIComponent(search) %>">
+                  <%= i %>
+                </a>
+              </li>
+            <% } %>
+            <li class="page-item <%= currentPage===totalPages?'disabled':'' %>">
+              <a class="page-link bg-dark text-white border-secondary"
+                href="/premium?page=<%= currentPage+1 %>&category=<%= activeCategory %>&sort=<%= sort %>&search=<%= encodeURIComponent(search) %>"
+                <%= currentPage===totalPages?'tabindex="-1" aria-disabled="true"':'' %>>Next</a>
+            </li>
+          </ul>
+        </nav>
+      <% } %>
+
+    </main>
+  </div>
+</section>
+
+<%- include('../partials/footer') %>
+</body>
+</html>
