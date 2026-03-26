@@ -1,0 +1,191 @@
+<%
+  const p        = locals.product  || {};
+  const existing = locals.existing || null;
+  const error    = locals.error    || null;
+  const initRating = existing?.rating || 0;
+%>
+
+<%- include('../partials/user-head', { title: `Review — ${p.productName || 'Product'}` }) %>
+
+<body class="bg-black text-light">
+<%- include('../partials/header') %>
+
+<div style="margin-top:76px;">
+
+  <!-- BREADCRUMB -->
+  <div style="background:#0d0d0d; border-bottom:1px solid #333;" class="py-2">
+    <div class="container">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0 small" style="--bs-breadcrumb-divider-color:#666;">
+          <li class="breadcrumb-item"><a href="/" class="text-muted text-decoration-none">Home</a></li>
+          <li class="breadcrumb-item">
+            <a href="/product/<%= p._id %>" class="text-muted text-decoration-none"><%= p.productName %></a>
+          </li>
+          <li class="breadcrumb-item active text-white" aria-current="page">Write a Review</li>
+        </ol>
+      </nav>
+    </div>
+  </div>
+
+  <!-- REVIEW FORM -->
+  <section class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-lg-7">
+
+        <!-- Card -->
+        <div class="border border-secondary rounded-0 p-4 p-md-5" style="background:#111; border-left:4px solid #E63946 !important;">
+
+          <h2 class="fw-bold text-white text-uppercase mb-4" style="font-family:'Anton',sans-serif; letter-spacing:1px; font-size:1.8rem;">
+            Write a Review
+          </h2>
+
+          <!-- Product pill -->
+          <div class="d-flex align-items-center gap-3 mb-4 p-3 border border-secondary rounded-0" style="background:#1a1a1a;">
+            <div class="rounded-0 overflow-hidden flex-shrink-0"
+                 style="width:48px; height:48px; background:#E63946; display:flex; align-items:center; justify-content:center;">
+              <i class="fas fa-book-open text-white"></i>
+            </div>
+            <div>
+              <div class="fw-bold text-white small"><%= p.productName %></div>
+              <% if (p.author) { %><div class="text-muted" style="font-size:0.75rem;">By <%= p.author %></div><% } %>
+            </div>
+          </div>
+
+          <!-- Error -->
+          <% if (error) { %>
+            <div class="alert alert-danger rounded-0 border-0 mb-4 small" role="alert"
+                 style="background:rgba(230,57,70,0.15); border-left:3px solid #E63946 !important;">
+              <i class="fas fa-exclamation-circle me-2"></i><%= error %>
+            </div>
+          <% } %>
+
+          <!-- FORM -->
+          <form action="/product/<%= p._id %>/review" method="POST" id="review-form">
+
+            <!-- Star Rating -->
+            <div class="mb-4">
+              <label class="form-label text-white fw-bold small text-uppercase" style="letter-spacing:0.5px;">
+                Your Rating <span class="text-danger">*</span>
+              </label>
+              <div class="d-flex gap-1 mb-1" id="star-selector" style="font-size:2rem; cursor:pointer;">
+                <% for (let i = 1; i <= 5; i++) { %>
+                  <i class="<%= i <= initRating ? 'fas' : 'far' %> fa-star star-btn"
+                     data-val="<%= i %>"
+                     style="color: <%= i <= initRating ? '#ffc107' : '#555' %>; transition: color 0.15s;"></i>
+                <% } %>
+              </div>
+              <div id="rating-label" class="small" style="color: #E63946; min-height:1.2em;">
+                <% if (initRating === 1) { %>Poor — 1/5
+                <% } else if (initRating === 2) { %>Fair — 2/5
+                <% } else if (initRating === 3) { %>Good — 3/5
+                <% } else if (initRating === 4) { %>Very Good — 4/5
+                <% } else if (initRating === 5) { %>Excellent — 5/5
+                <% } %>
+              </div>
+              <input type="hidden" name="rating" id="rating-input" value="<%= initRating %>" required>
+            </div>
+
+            <!-- Review Title -->
+            <div class="mb-4">
+              <label for="title" class="form-label text-white fw-bold small text-uppercase" style="letter-spacing:0.5px;">
+                Review Title <span class="text-muted fw-normal">(optional)</span>
+              </label>
+              <input type="text" name="title" id="title" maxlength="60"
+                     class="form-control bg-black text-light border-secondary rounded-0 shadow-none"
+                     placeholder="Sum up your experience in a few words..."
+                     value="<%= existing?.title || '' %>"
+                     oninput="updateCount('title', 'title-count', 60)">
+              <div class="text-end text-muted mt-1" style="font-size:0.72rem;">
+                <span id="title-count"><%= existing?.title?.length || 0 %></span> / 60
+              </div>
+            </div>
+
+            <!-- Review Body -->
+            <div class="mb-4">
+              <label for="body" class="form-label text-white fw-bold small text-uppercase" style="letter-spacing:0.5px;">
+                Your Review <span class="text-muted fw-normal">(optional)</span>
+              </label>
+              <textarea name="body" id="body" rows="5" maxlength="1000"
+                        class="form-control bg-black text-light border-secondary rounded-0 shadow-none"
+                        placeholder="Tell other readers what you thought about this book — what you loved, what could be better, or who you'd recommend it to..."
+                        oninput="updateCount('body', 'body-count', 1000)"><%= existing?.body || '' %></textarea>
+              <div class="text-end text-muted mt-1" style="font-size:0.72rem;">
+                <span id="body-count"><%= existing?.body?.length || 0 %></span> / 1000
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="d-flex gap-3">
+              <button type="submit" class="btn btn-danger rounded-0 fw-bold px-4" id="submit-btn"
+                      style="letter-spacing:1px;">
+                <i class="fas fa-paper-plane me-2"></i>SUBMIT REVIEW
+              </button>
+              <a href="/product/<%= p._id %>" class="btn btn-outline-secondary rounded-0 fw-bold px-4">
+                <i class="fas fa-times me-2"></i>CANCEL
+              </a>
+            </div>
+
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<%- include('../partials/footer') %>
+
+<script>
+/* ── Star interaction ─────────────────────────────── */
+const stars   = document.querySelectorAll('.star-btn');
+const rInput  = document.getElementById('rating-input');
+const rLabel  = document.getElementById('rating-label');
+const labels  = ['', 'Poor — 1/5', 'Fair — 2/5', 'Good — 3/5', 'Very Good — 4/5', 'Excellent — 5/5'];
+let currentRating = parseInt(rInput.value) || 0;
+
+function paintStars(val) {
+  stars.forEach(s => {
+    const v = parseInt(s.dataset.val);
+    s.classList.toggle('fas', v <= val);
+    s.classList.toggle('far', v > val);
+    s.style.color = v <= val ? '#ffc107' : '#555';
+  });
+}
+
+function setRating(val) {
+  currentRating = val;
+  rInput.value  = val;
+  rLabel.textContent = labels[val] || '';
+  paintStars(val);
+}
+
+// Init
+if (currentRating) paintStars(currentRating);
+
+stars.forEach(s => {
+  const val = parseInt(s.dataset.val);
+  s.addEventListener('mouseenter', () => paintStars(val));
+  s.addEventListener('mouseleave', () => paintStars(currentRating));
+  s.addEventListener('click',      () => setRating(val));
+});
+
+/* ── Character counters ──────────────────────────── */
+function updateCount(fieldId, countId, max) {
+  const len = document.getElementById(fieldId).value.length;
+  document.getElementById(countId).textContent = len;
+}
+
+/* ── Prevent submit without rating ──────────────── */
+document.getElementById('review-form').addEventListener('submit', e => {
+  if (!parseInt(rInput.value)) {
+    e.preventDefault();
+    rLabel.textContent = 'Please select a rating!';
+    rLabel.style.color = '#E63946';
+    document.getElementById('star-selector').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+});
+</script>
+
+</body>
+</html>

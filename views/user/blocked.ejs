@@ -1,0 +1,33 @@
+<%- include('../partials/user-head', { title: 'Account Blocked' }) %>
+
+<body class="bg-black text-light">
+  <%- include('../partials/header') %>
+
+  <div class="d-flex align-items-center justify-content-center" style="min-height:100vh; margin-top:76px;">
+    <div class="container text-center py-5">
+
+      <div class="mb-4">
+        <i class="fas fa-ban" style="font-size:5rem;color:#dc3545;"></i>
+      </div>
+
+      <h1 class="display-4 fw-bold text-uppercase mb-3" style="font-family:'Anton',sans-serif;letter-spacing:2px;">
+        Account <span style="color:#dc3545;">Blocked</span>
+      </h1>
+
+      <p class="lead text-white-50 mb-4" style="max-width:500px;margin:0 auto;">
+        Your account has been suspended. If you believe this is a mistake,
+        please contact our support team.
+      </p>
+
+      <a href="mailto:support@comizon.com" class="btn btn-outline-danger btn-lg px-5 rounded-0 fw-bold">
+        Contact Support
+      </a>
+
+    </div>
+  </div>
+
+  <%- include('../partials/footer') %>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

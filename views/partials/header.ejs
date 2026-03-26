@@ -1,0 +1,92 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-black fixed-top py-3 border-bottom border-danger sub-border">
+    <div class="container">
+
+        <a class="navbar-brand logo-text" href="/">
+            COMIZON<span class="text-danger">.</span>
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+
+            <ul class="navbar-nav mx-auto">
+
+                <li class="nav-item">
+                    <a class="nav-link <%= title === 'Home' ? 'active' : '' %>" href="/">Home</a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link <%= title.includes('American') ? 'active' : '' %>" href="/american">American</a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link <%= title === 'Manga' ? 'active' : '' %>" href="/manga">Manga</a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link <%= title === 'Toys' ? 'active' : '' %>" href="/toys">Toys</a>
+                </li>
+
+                <li class="nav-item">
+                    <a class="nav-link <%= title === 'About Us' ? 'active' : '' %>" href="/about">About Us</a>
+                </li>
+
+                <li class="nav-item d-lg-none">
+                    <a class="nav-link text-warning" href="#">Premium Mode</a>
+                </li>
+
+            </ul>
+
+
+            <div class="d-flex align-items-center gap-3 right-nav">
+
+                <div class="input-group d-none d-lg-flex search-bar-group">
+                    <input type="text" class="form-control bg-dark text-light border-secondary" placeholder="Search...">
+                    <button class="btn btn-outline-danger" type="button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+
+
+                <a href="/wishlist" class="nav-icon position-relative" id="wishlist-btn">
+                    <i class="far fa-heart"></i>
+                    <% if (locals.wishlistCount > 0) { %>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                            id="wishlist-count"><%= locals.wishlistCount %></span>
+                    <% } %>
+                </a>
+
+
+                <a href="/cart" class="nav-icon position-relative">
+                    <i class="fas fa-shopping-cart"></i>
+                    <% if (locals.cartCount > 0) { %>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"><%= locals.cartCount %></span>
+                    <% } %>
+                </a>
+
+
+                <% if (locals.sessionUser) { %>
+
+                    <a href="/profile" class="nav-icon" title="<%= locals.sessionUser.email %>">
+                        <i class="fas fa-user-circle text-danger"></i>
+                    </a>
+
+                <% } else { %>
+
+                    <a href="/login" class="btn btn-outline-danger btn-sm fw-bold rounded-0">LOGIN</a>
+
+                <% } %>
+
+
+                <a href="/premium"
+                    class="btn btn-sm fw-bold d-none d-lg-block <%= title === 'Premium' ? 'btn-warning text-dark' : 'btn-danger' %>">
+                    PREMIUM
+                    </a>
+
+            </div>
+
+        </div>
+    </div>
+</nav>

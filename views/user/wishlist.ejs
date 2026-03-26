@@ -1,0 +1,165 @@
+<%- include('../partials/user-head', { title: 'My Wishlist' }) %>
+
+<body class="bg-black text-light">
+
+    <%- include('../partials/header') %>
+
+    <style>
+        .product-card {
+            background-color: #1A1A1A;
+            border: 1px solid #333;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .product-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border-color: var(--primary-red) !important;
+        }
+        .card-img-wrapper img {
+            height: 320px;
+            object-fit: cover;
+            width: 100%;
+            transition: transform 0.5s ease;
+        }
+        .product-card:hover .card-img-wrapper img {
+            transform: scale(1.05);
+        }
+        .remove-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.85;
+            transition: opacity 0.2s;
+        }
+        .remove-btn:hover { opacity: 1; }
+
+        .empty-state {
+            min-height: 50vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+        .empty-icon {
+            font-size: 5rem;
+            color: #333;
+        }
+        .page-header {
+            margin-top: 90px;
+            padding-top: 2rem;
+            padding-bottom: 1.5rem;
+        }
+    </style>
+
+    <!-- Page Header -->
+    <header class="container page-header mb-4">
+        <h1 class="display-4 text-uppercase border-start border-4 border-danger ps-3">
+            My <span class="text-danger">Wishlist</span>
+        </h1>
+        <% const items = Array.isArray(locals.wishlistItems) ? locals.wishlistItems : []; %>
+        <p class="text-white-50 mt-2 ps-3"><%= items.length %> item<%= items.length !== 1 ? 's' : '' %> saved</p>
+    </header>
+
+    <!-- Flash Messages -->
+    <% if (locals.success) { %>
+        <div class="container mb-3">
+            <div class="alert alert-success alert-dismissible rounded-0 fade show border-0 border-start border-4 border-success" role="alert">
+                <i class="fas fa-check-circle me-2"></i><%= locals.success %>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+            </div>
+        </div>
+    <% } %>
+    <% if (locals.error) { %>
+        <div class="container mb-3">
+            <div class="alert alert-danger alert-dismissible rounded-0 fade show border-0 border-start border-4 border-danger" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i><%= locals.error %>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+            </div>
+        </div>
+    <% } %>
+
+    <!-- Wishlist Grid -->
+    <section class="container pb-5">
+
+        <% if (items.length === 0) { %>
+            <!-- Empty State -->
+            <div class="empty-state text-center py-5">
+                <div class="empty-icon"><i class="far fa-heart"></i></div>
+                <h3 class="text-white-50 mt-3">Your wishlist is empty</h3>
+                <p class="text-white-50">Save items you love and come back to them anytime.</p>
+                <a href="/" class="btn btn-danger px-4 py-2 rounded-0 fw-bold mt-2">
+                    <i class="fas fa-book-open me-2"></i>Browse Comics
+                </a>
+            </div>
+
+        <% } else { %>
+            <div class="row g-4">
+                <% items.forEach(product => { %>
+                    <div class="col-md-4 col-lg-3">
+                        <div class="card product-card h-100 rounded-0 border-0">
+
+                            <!-- Image + Remove Button -->
+                            <div class="card-img-wrapper position-relative overflow-hidden">
+                                <a href="/product/<%= product._id %>">
+                                    <% if (product.image) { %>
+                                        <img src="<%= product.image %>" class="card-img-top" alt="<%= product.name %>">
+                                    <% } else { %>
+                                        <div class="d-flex align-items-center justify-content-center bg-dark text-white-50" style="height:320px;">
+                                            <i class="fas fa-book fa-3x"></i>
+                                        </div>
+                                    <% } %>
+                                </a>
+
+                                <!-- Remove from wishlist -->
+                                <form action="/wishlist/remove/<%= product._id %>" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-light btn-sm rounded-circle remove-btn text-danger" title="Remove from wishlist">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- Card Body -->
+                            <div class="card-body d-flex flex-column" style="background:#1A1A1A;">
+                                <div class="text-muted small mb-1 text-uppercase"><%= product.category %></div>
+                                <h5 class="card-title fw-bold text-truncate text-white mb-1">
+                                    <a href="/product/<%= product._id %>" class="text-decoration-none text-white">
+                                        <%= product.name %>
+                                    </a>
+                                </h5>
+                                <h4 class="text-white mt-1 mb-3">$<%= product.price.toFixed(2) %></h4>
+
+                                <!-- Move to Cart -->
+                                <form action="/wishlist/move-to-cart/<%= product._id %>" method="POST" class="mt-auto">
+                                    <button type="submit" class="btn btn-outline-danger w-100 rounded-0 fw-bold">
+                                        <i class="fas fa-shopping-cart me-2"></i>Add to Cart
+                                    </button>
+                                </form>
+                            </div>
+
+                        </div>
+                    </div>
+                <% }) %>
+            </div>
+
+            <!-- Continue Shopping -->
+            <div class="mt-5 pt-2">
+                <a href="/" class="text-decoration-none text-white-50">
+                    <i class="fas fa-arrow-left me-2"></i>Continue Shopping
+                </a>
+            </div>
+        <% } %>
+
+    </section>
+
+    <%- include('../partials/footer') %>
+
+</body>
+</html>

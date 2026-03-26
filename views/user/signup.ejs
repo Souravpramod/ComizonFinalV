@@ -1,0 +1,302 @@
+<%- include('../partials/user-head') %>
+
+<style>
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #000;
+    color: white;
+    min-height: 100vh;
+    padding: 2rem 0;
+    background-image: linear-gradient(rgba(0,0,0,0.9), rgba(0,0,0,0.9)),
+        url('https://res.cloudinary.com/deutxfkar/image/upload/v1771836691/avengers,35.jpg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+}
+
+.logo-text{
+    font-family:'Anton',sans-serif;
+    letter-spacing:1px;
+}
+
+.signup-card{
+    background-color:rgba(18,18,18,0.95);
+    backdrop-filter:blur(10px);
+    border:1px solid #333;
+    max-width:800px;
+    margin:0 auto;
+    border-top:4px solid #E63946;
+}
+
+.form-label{
+    color:#fff;
+    font-size:0.85rem;
+    font-weight:500;
+}
+
+.form-control,.form-select{
+    background-color:#222;
+    border:1px solid #444;
+    color:white;
+}
+
+.form-control:focus,.form-select:focus{
+    border-color:#E63946;
+    box-shadow:none;
+}
+
+.section-title{
+    color:#E63946;
+    font-size:0.9rem;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    border-bottom:1px solid #333;
+    padding-bottom:.4rem;
+}
+
+.btn-danger{
+    background:#E63946;
+    border:none;
+}
+
+.btn-google{
+    background:white;
+    color:#333;
+    font-weight:600;
+}
+
+#other-gender-input{
+    display:none;
+}
+</style>
+
+
+<body class="bg-black text-light">
+
+<div class="container">
+    <div class="signup-card p-4 p-md-5 rounded-0 shadow-lg">
+
+        <div class="text-center mb-5">
+            <h2 class="logo-text mb-1">JOIN COMIZON<span class="text-danger">.</span></h2>
+            <p class="text-muted">Create your account to start your collection.</p>
+        </div>
+
+        <% if(locals.error){ %>
+        <div class="alert alert-danger rounded-0">
+            <%= locals.error %>
+        </div>
+        <% } %>
+
+        <form action="/signup" method="POST">
+
+            <!-- PERSONAL INFO -->
+            <div class="mb-4">
+                <h5 class="section-title">Personal Information</h5>
+
+                <div class="row g-3">
+
+                    <div class="col-md-4">
+                        <label class="form-label">First Name</label>
+                        <input type="text" name="firstName"
+                            class="form-control <%= locals.fieldErrors?.firstName ? 'border-danger':'' %>"
+                            value="<%= locals.formData?.firstName || '' %>">
+                        <% if(locals.fieldErrors?.firstName){ %>
+                        <div class="text-danger small"><%= locals.fieldErrors.firstName %></div>
+                        <% } %>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Last Name</label>
+                        <input type="text" name="lastName"
+                            class="form-control <%= locals.fieldErrors?.lastName ? 'border-danger':'' %>"
+                            value="<%= locals.formData?.lastName || '' %>">
+                        <% if(locals.fieldErrors?.lastName){ %>
+                        <div class="text-danger small"><%= locals.fieldErrors.lastName %></div>
+                        <% } %>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">Gender</label>
+                        <select name="gender"
+                            id="gender-select"
+                            class="form-select <%= locals.fieldErrors?.gender ? 'border-danger':'' %>"
+                            onchange="toggleGenderInput()">
+                            <option value="">Select Gender</option>
+                            <option value="male" <%= locals.formData?.gender==='male'?'selected':'' %>>Male</option>
+                            <option value="female" <%= locals.formData?.gender==='female'?'selected':'' %>>Female</option>
+                            <option value="other" <%= locals.formData?.gender==='other'?'selected':'' %>>Other</option>
+                        </select>
+                        <% if(locals.fieldErrors?.gender){ %>
+                        <div class="text-danger small"><%= locals.fieldErrors.gender %></div>
+                        <% } %>
+                        <input type="text"
+                            name="genderOther"
+                            id="other-gender-input"
+                            class="form-control mt-2"
+                            placeholder="Please specify"
+                            value="<%= locals.formData?.genderOther || '' %>"
+                            style="display:<%= locals.formData?.gender==='other'?'block':'none' %>">
+                    </div>
+
+                </div>
+            </div><!-- end PERSONAL INFO -->
+
+
+            <!-- ACCOUNT INFO -->
+            <div class="mb-4">
+                <h5 class="section-title">Account Details</h5>
+
+                <div class="row g-3">
+
+                    <div class="col-md-6">
+                        <label class="form-label">Username</label>
+                        <input type="text"
+                            name="username"
+                            class="form-control <%= locals.fieldErrors?.username ? 'border-danger':'' %>"
+                            value="<%= locals.formData?.username || '' %>">
+                        <% if(locals.fieldErrors?.username){ %>
+                        <div class="text-danger small"><%= locals.fieldErrors.username %></div>
+                        <% } %>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Email</label>
+                        <input type="text"
+                            name="email"
+                            class="form-control <%= locals.fieldErrors?.email ? 'border-danger':'' %>"
+                            value="<%= locals.formData?.email || '' %>">
+                        <% if(locals.fieldErrors?.email){ %>
+                        <div class="text-danger small"><%= locals.fieldErrors.email %></div>
+                        <% } %>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Mobile Number</label>
+                        <div class="input-group">
+                            <select name="countryCode" class="form-select" style="max-width:100px;">
+                                <option value="+1">+1</option>
+                                <option value="+44">+44</option>
+                                <option value="+91" selected>+91</option>
+                            </select>
+                            <input type="tel"
+                                name="phone"
+                                class="form-control <%= locals.fieldErrors?.phone ? 'border-danger':'' %>"
+                                value="<%= locals.formData?.phone || '' %>">
+                        </div>
+                        <% if(locals.fieldErrors?.phone){ %>
+                        <div class="text-danger small"><%= locals.fieldErrors.phone %></div>
+                        <% } %>
+                    </div>
+
+                </div>
+            </div><!-- end ACCOUNT INFO -->
+
+
+            <!-- PASSWORD -->
+            <div class="mb-4">
+                <h5 class="section-title">Password</h5>
+
+                <div class="row g-3">
+
+                    <div class="col-md-6">
+                        <label class="form-label">Password</label>
+                        <div class="input-group">
+                            <input type="password"
+                                name="password"
+                                class="form-control password-field <%= locals.fieldErrors?.password ? 'border-danger':'' %>">
+                            <button type="button"
+                                class="btn btn-outline-secondary toggle-password">
+                                <i class="fas fa-eye text-white"></i>
+                            </button>
+                        </div>
+                        <% if(locals.fieldErrors?.password){ %>
+                        <div class="text-danger small"><%= locals.fieldErrors.password %></div>
+                        <% } %>
+
+                        <!-- PASSWORD RULES -->
+                        <% if(locals.passwordCriteria){ %>
+                        <div class="small mt-2">
+                            <% locals.passwordCriteria.forEach(rule=>{ %>
+                            <div class="<%= rule.passed?'text-success':'text-danger' %>">
+                                <%= rule.passed?'✓':'✗' %> <%= rule.label %>
+                            </div>
+                            <% }) %>
+                        </div>
+                        <% } %>
+                    </div><!-- end password col -->
+
+                    <div class="col-md-6">
+                        <label class="form-label">Confirm Password</label>
+                        <div class="input-group">
+                            <input type="password"
+                                name="confirmPassword"
+                                class="form-control password-field <%= locals.fieldErrors?.confirmPassword ? 'border-danger':'' %>">
+                                                        <button type="button"
+                                class="btn btn-outline-secondary toggle-password">
+                                <i class="fas fa-eye text-white"></i>
+                            </button>
+                        </div>
+                        <% if(locals.fieldErrors?.confirmPassword){ %>
+                        <div class="text-danger small mt-1">
+                            <%= locals.fieldErrors.confirmPassword %>
+                        </div>
+                        <% } %>
+                    </div><!-- end confirm password col -->
+
+                </div>
+            </div><!-- end PASSWORD -->
+
+
+            <!-- ACTION BUTTONS -->
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <button type="submit" class="btn btn-danger w-100 py-3">
+                        Create Account
+                    </button>
+                </div>
+                <div class="col-md-6">
+                    <a href="/auth/google"
+                        class="btn btn-google w-100 py-3 text-decoration-none">
+                        <i class="fab fa-google me-2 text-danger"></i>
+                        Sign up with Google
+                    </a>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <p class="small">
+                    Already a member?
+                    <a href="/login" class="text-danger fw-bold">Login Here</a>
+                </p>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+
+<script>
+function toggleGenderInput(){
+    const select = document.getElementById('gender-select');
+    const other  = document.getElementById('other-gender-input');
+    other.style.display = select.value === 'other' ? 'block' : 'none';
+}
+
+document.querySelectorAll('.toggle-password').forEach(btn => {
+    btn.addEventListener('click', function(){
+        const input = this.previousElementSibling;
+        const icon  = this.querySelector('i');
+        if(input.type === 'password'){
+            input.type = 'text';
+            icon.classList.replace('fa-eye', 'fa-eye-slash');
+        } else {
+            input.type = 'password';
+            icon.classList.replace('fa-eye-slash', 'fa-eye');
+        }
+    });
+});
+</script>
+
+</body>
+</html>

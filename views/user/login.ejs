@@ -1,0 +1,177 @@
+<%- include('../partials/user-head') %>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #000;
+            color: white;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-image: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), url('https://res.cloudinary.com/deutxfkar/image/upload/v1771836691/hero_section.jpg');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .login-card {
+            background-color: rgba(18, 18, 18, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid #333;
+            width: 100%;
+            max-width: 450px;
+            padding: 2.5rem;
+            border-top: 4px solid #E63946;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .form-control {
+            background-color: #222;
+            border: 1px solid #444;
+            color: white;
+            padding: 0.8rem;
+        }
+
+        .form-control:focus {
+            background-color: #222;
+            border-color: #E63946;
+            color: white;
+            box-shadow: none;
+        }
+
+        .btn-danger {
+            background-color: #E63946;
+            border: none;
+            padding: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            transition: all 0.3s;
+        }
+
+        .btn-danger:hover {
+            background-color: #c92a36;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(230, 57, 70, 0.3);
+        }
+
+        .btn-google {
+            background-color: white;
+            color: #333;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-google:hover {
+            background-color: #f1f1f1;
+            transform: translateY(-2px);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: #666;
+            margin: 1.5rem 0;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #333;
+        }
+
+        .divider:not(:empty)::before {
+            margin-right: .5em;
+        }
+
+        .divider:not(:empty)::after {
+            margin-left: .5em;
+        }
+    </style>
+
+    <body class="bg-black text-light">
+        <div class="login-card rounded-0">
+            <div class="text-center mb-4">
+                <h2 class="logo-text mb-1">COMIZON<span class="text-danger">.</span></h2>
+                <p class="text-muted small text-uppercase">Member Login</p>
+            </div>
+
+            <% if (locals.error) { %>
+                <div class="alert alert-danger rounded-0 small py-2">
+                    <%= error %>
+                </div>
+                <% } %>
+
+                    <form action="/login" method="POST">
+                        <div class="mb-3">
+                            <label class="form-label text-white small">EMAIL ADDRESS</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark border-secondary text-white"><i
+                                        class="fas fa-envelope"></i></span>
+                                <input type="email" name="email" class="form-control text-white <%= locals.fieldErrors?.email ? 'is-invalid' : '' %>"
+                                    placeholder="Enter your email" value="<%= locals.formData?.email || '' %>">
+                                <% if (locals.fieldErrors?.email) { %>
+                                    <div class="invalid-feedback"><%= locals.fieldErrors.email %></div>
+                                <% } %>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label text-white small">PASSWORD</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark border-secondary text-white"><i
+                                        class="fas fa-lock"></i></span>
+                                <input type="password" name="password" class="form-control text-white password-field <%= locals.fieldErrors?.password ? 'is-invalid' : '' %>"
+                                    placeholder="Enter your password">
+                                <button type="button"
+                                    class="btn btn-outline-secondary border-secondary toggle-password">
+                                    <i class="fas fa-eye text-white"></i>
+                                </button>
+                                <% if (locals.fieldErrors?.password) { %>
+                                    <div class="invalid-feedback d-block"><%= locals.fieldErrors.password %></div>
+                                <% } %>
+                            </div>
+                        </div>
+
+                        <div class="d-grid mb-3">
+                            <button type="submit" class="btn btn-danger text-uppercase">Sign In</button>
+                        </div>
+
+                        <div class="divider small text-white">OR</div>
+
+                        <div class="d-grid mb-4">
+                            <a href="/auth/google" class="btn btn-google">
+                                <i class="fab fa-google me-2 text-danger"></i> Continue with Google
+                            </a>
+                        </div>
+
+                        <div class="text-center">
+                            <p class="small text-white mb-0">Don't have an account? <a href="/signup"
+                                    class="fw-bold text-danger">Sign Up
+                                    Now</a></p>
+                            <a href="/forgot-password" class="small text-white d-block mt-2">Forgot Password?</a>
+                        </div>
+                    </form>
+        </div>
+
+        <script>
+            document.querySelectorAll('.toggle-password').forEach(button => {
+                button.addEventListener('click', function () {
+                    const input = this.previousElementSibling;
+                    const icon = this.querySelector('i');
+
+                    if (input.type === 'password') {
+                        input.type = 'text';
+                        icon.classList.remove('fa-eye');
+                        icon.classList.add('fa-eye-slash');
+                    } else {
+                        input.type = 'password';
+                        icon.classList.remove('fa-eye-slash');
+                        icon.classList.add('fa-eye');
+                    }
+                });
+            });
+        </script>
+    </body>
+
+    </html>

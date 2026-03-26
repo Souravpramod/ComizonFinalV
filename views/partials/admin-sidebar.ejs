@@ -1,0 +1,64 @@
+<div class="admin-sidebar">
+    <div class="admin-logo">
+        <h3 class="logo-text mb-0">COMIZON<span style="color: var(--admin-gold);">.</span></h3>
+        <span class="admin-badge mt-2">ADMIN PANEL</span>
+    </div>
+
+    <nav class="sidebar-nav">
+        <div class="nav-item">
+            <a href="/admin/dashboard" class="nav-link">
+                <i class="fas fa-chart-line"></i>
+                Dashboard
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="/admin/products" class="nav-link <%= locals.title && locals.title.toLowerCase().includes('product') ? 'active' : '' %>">
+                <i class="fas fa-box"></i>
+                Products
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="/admin/categories" class="nav-link <%= locals.title && locals.title.toLowerCase().includes('category') ? 'active' : '' %>">
+                <i class="fas fa-tags"></i>
+                Categories
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="/admin/orders" class="nav-link">
+                <i class="fas fa-shopping-cart"></i>
+                Orders
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="/admin/users" class="nav-link <%= locals.title && locals.title.toLowerCase().includes('user') ? 'active' : '' %>">
+                <i class="fas fa-users"></i>
+                User Management
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="/admin/reports" class="nav-link">
+                <i class="fas fa-chart-bar"></i>
+                Sales Reports
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="/admin/pgSettings" class="nav-link">
+                <i class="fas fa-book-open"></i>
+                Page Settings
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="/admin/coupons" class="nav-link">
+                <i class="fas fa-store"></i>
+                Manage Coupons
+            </a>
+        </div>
+        
+        <div class="nav-item">
+            <a href="/admin/logout" class="nav-link">
+                <i class="fas fa-sign-out-alt"></i>
+                Logout
+            </a>
+        </div>
+    </nav>
+</div>
