@@ -1,0 +1,122 @@
+<%- include('../partials/user-head', { title: 'Verify OTP' }) %>
+<style>
+  body { background: linear-gradient(135deg,#1a1a1a 0%,#000 100%); height:100vh; display:flex; align-items:center; justify-content:center; }
+  .otp-container { background:#121212; border:1px solid #333; border-top:4px solid var(--primary-red); width:100%; max-width:500px; padding:3rem 2.5rem; box-shadow:0 10px 40px rgba(0,0,0,0.7); }
+  .otp-icon { width:80px; height:80px; background:linear-gradient(135deg,var(--primary-red) 0%,#c92a36 100%); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 2rem; font-size:2.5rem; color:white; }
+  .otp-inputs { display:flex; gap:1rem; justify-content:center; margin:2rem 0; }
+  .otp-input { width:60px; height:60px; text-align:center; font-size:1.5rem; font-weight:700; background:#1E1E1E; border:2px solid #444; color:white; border-radius:0; transition:all 0.3s; }
+  .otp-input:focus { background:#1E1E1E; border-color:var(--primary-red); color:white; box-shadow:0 0 0 0.2rem rgba(230,57,70,0.25); outline:none; }
+  .email-badge { background:rgba(255,215,0,0.1); border:1px solid #FFD700; color:#FFD700; padding:0.5rem 1rem; display:inline-block; font-weight:600; }
+  .timer { color:#FFD700; font-weight:700; min-width:50px; display:inline-block; }
+  #resendBtn:disabled { opacity:0.5; cursor:not-allowed; }
+</style>
+
+<body class="bg-black text-light">
+  <div class="otp-container">
+    <div class="text-center mb-4">
+      <h2 class="logo-text mb-1">COMIZON<span class="text-danger">.</span></h2>
+    </div>
+    <div class="otp-icon"><i class="fas fa-envelope"></i></div>
+    <div class="text-center mb-3">
+      <h4 class="fw-bold text-uppercase">Verify Your Email</h4>
+      <p class="text-muted mb-2">We've sent a verification code to</p>
+      <div class="email-badge"><i class="fas fa-envelope me-2"></i><%= locals.email || 'your email' %></div>
+      <p class="text-muted small mt-3">Please enter the 6-digit code below</p>
+    </div>
+
+    <% if (locals.error) { %><div class="alert alert-danger rounded-0 small py-2 mb-3"><%= error %></div><% } %>
+    <% if (locals.message) { %><div class="alert alert-success rounded-0 small py-2 mb-3"><%= message %></div><% } %>
+
+    <form action="/verify-otp" method="POST" id="otpForm">
+     
+      <div class="otp-inputs">
+        <input type="text" name="otp[]" class="otp-input" maxlength="1" required autofocus inputmode="numeric">
+        <input type="text" name="otp[]" class="otp-input" maxlength="1" required inputmode="numeric">
+        <input type="text" name="otp[]" class="otp-input" maxlength="1" required inputmode="numeric">
+        <input type="text" name="otp[]" class="otp-input" maxlength="1" required inputmode="numeric">
+        <input type="text" name="otp[]" class="otp-input" maxlength="1" required inputmode="numeric">
+        <input type="text" name="otp[]" class="otp-input" maxlength="1" required inputmode="numeric">
+      </div>
+      <button type="submit" class="btn btn-danger w-100 py-3 text-uppercase fw-bold rounded-0">
+        <i class="fas fa-check-circle me-2"></i>Verify Code
+      </button>
+    </form>
+
+    <div class="text-center mt-3">
+      <p class="text-muted small mb-2">Didn't receive the code?</p>
+      <form action="/resend-otp" method="POST" id="resendForm" style="display:inline;">
+        
+        <button type="submit" class="btn btn-link text-danger p-0 text-decoration-none fw-bold" id="resendBtn">
+          <i class="fas fa-redo me-1"></i>Resend Code
+        </button>
+      </form>
+      <span class="timer ms-2" id="timerDisplay" style="display:none;"></span>
+    </div>
+
+    <div class="text-center mt-4">
+      <a href="/login" class="text-muted text-decoration-none small"><i class="fas fa-arrow-left me-1"></i>Back to Login</a>
+    </div>
+  </div>
+
+  <script>
+    const inputs = document.querySelectorAll('.otp-input');
+    inputs.forEach((input, i) => {
+      input.addEventListener('input', e => {
+        e.target.value = e.target.value.replace(/\D/g,'');
+        if (e.target.value && i < inputs.length - 1) inputs[i+1].focus();
+      });
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Backspace' && !e.target.value && i > 0) inputs[i-1].focus();
+      });
+      input.addEventListener('paste', e => {
+        e.preventDefault();
+        const data = e.clipboardData.getData('text').replace(/\D/g,'');
+        [...data].forEach((c,j) => { if(inputs[i+j]) inputs[i+j].value = c; });
+        if (inputs[Math.min(i+data.length, inputs.length-1)]) inputs[Math.min(i+data.length, inputs.length-1)].focus();
+      });
+    });
+
+  
+  </script>
+<script>
+    const resendBtn     = document.getElementById('resendBtn');
+    const timerDisplay  = document.getElementById('timerDisplay');
+    const COOLDOWN_KEY  = 'otp_resend_deadline';
+    const COOLDOWN_SECS = 60;
+
+    const serverRemaining = parseInt('<%= remainingTime %>') || 0;
+    const storedDeadline  = parseInt(sessionStorage.getItem(COOLDOWN_KEY)) || 0;
+    const storedSecsLeft  = Math.max(0, Math.floor((storedDeadline - Date.now()) / 1000));
+
+
+    const isFreshOtp = <%= locals.freshOtp === true ? 'true' : 'false' %>;
+
+    if (isFreshOtp) {
+        sessionStorage.setItem(COOLDOWN_KEY, Date.now() + COOLDOWN_SECS * 1000);
+    }
+
+    function updateResendTimer() {
+        const deadline   = parseInt(sessionStorage.getItem(COOLDOWN_KEY)) || 0;
+        const secondsLeft = Math.max(0, Math.floor((deadline - Date.now()) / 1000));
+
+        if (secondsLeft <= 0) {
+            timerDisplay.style.display = 'none';
+            resendBtn.disabled = false;
+            return;
+        }
+
+        resendBtn.disabled = true;
+        timerDisplay.style.display = 'inline';
+        timerDisplay.textContent = `(${secondsLeft}s)`;
+        setTimeout(updateResendTimer, 1000);
+    }
+
+    updateResendTimer();
+
+   
+    document.getElementById('resendForm').addEventListener('submit', () => {
+        sessionStorage.setItem(COOLDOWN_KEY, Date.now() + COOLDOWN_SECS * 1000);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<%- include('../partials/admin-head') %>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d0d0d;
+            color: white;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%);
+        }
+
+        .login-card {
+            background-color: #121212;
+            border: 1px solid #333;
+            width: 100%;
+            max-width: 450px;
+            padding: 2.5rem;
+            border-top: 4px solid #FFD700;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+        }
+
+        .btn-admin {
+            background-color: #FFD700;
+            color: black;
+            border: none;
+            padding: 0.8rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            transition: all 0.3s;
+        }
+
+        .admin-badge {
+            background-color: #FFD700;
+            color: black;
+            padding: 2px 8px;
+            font-weight: 800;
+            font-size: 0.7rem;
+            display: inline-block;
+            transform: translateY(-2px);
+        }
+    </style>
+
+    <body class="bg-black text-light">
+        <div class="login-card rounded-0">
+            <div class="text-center mb-5">
+                <h2 class="logo-text mb-1">COMIZON<span class="text-warning">.</span> <span
+                        class="admin-badge rounded">ADMIN</span></h2>
+                <p class="text-muted small text-uppercase">Authorized Personnel Only</p>
+            </div>
+
+            <% if (locals.error) { %>
+                <div class="alert alert-danger rounded-0 small py-2 mb-3">
+                    <%= error %>
+                </div>
+                <% } %>
+
+                    <form action="/admin/login" method="POST">
+                        <div class="mb-3">
+                            <label class="form-label text-warning small fw-bold">ADMIN EMAIL</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark border-secondary text-warning"><i
+                                        class="fas fa-shield-alt"></i></span>
+                                <input type="email" name="email"
+                                    class="form-control bg-black border-secondary text-white"
+                                    placeholder="Enter admin email" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label text-warning small fw-bold">PASSWORD</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark border-secondary text-warning"><i
+                                        class="fas fa-key"></i></span>
+                                <input type="password" name="password"
+                                    class="form-control bg-black border-secondary text-white"
+                                    placeholder="Enter secure password" required>
+                            </div>
+                        </div>
+
+                        <div class="d-grid mb-3">
+                            <button type="submit" class="btn btn-admin text-uppercase">Access Dashboard</button>
+                        </div>
+
+                        <div class="text-center mt-4">
+                            <a href="/" class="small text-warning text-decoration-none"><i
+                                    class="fas fa-arrow-left me-1"></i> Return to Store</a>
+                        </div>
+                    </form>
+        </div>
+    </body>
+
+    </html>
