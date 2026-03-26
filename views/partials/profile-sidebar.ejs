@@ -1,0 +1,93 @@
+<% const active = typeof activePage !== 'undefined' ? activePage : ''; %>
+
+<style>
+  .profile-sidebar-nav a {
+    display: block !important;
+    padding: 10px 12px !important;
+    text-decoration: none !important;
+    font-weight: 500 !important;
+    color: #ffffff !important;
+    transition: color 0.3s ease;
+  }
+  .profile-sidebar-nav a:hover {
+    color: #E63946 !important;
+  }
+  .profile-sidebar-nav a.sidebar-active {
+    color: #E63946 !important;
+    border-left: 4px solid #E63946 !important;
+    padding-left: 8px !important;
+    font-weight: 700 !important;
+  }
+  .profile-sidebar-nav a.sidebar-logout {
+    color: #E63946 !important;
+  }
+  .profile-sidebar-nav a::after {
+    display: none !important;
+  }
+</style>
+
+<div class="bg-dark border border-secondary p-4 position-sticky"
+     style="top:100px; border-top:4px solid #E63946 !important;">
+
+  <div class="text-center mb-3">
+    <% if (locals.user) { %>
+
+      <div class="mx-auto mb-3 d-flex align-items-center justify-content-center bg-danger rounded-circle fw-bold"
+           style="width:90px; height:90px; font-size:2.2rem; border:3px solid #FFD700; color:#ffffff;">
+        <%= locals.user.firstName.charAt(0) %><%= locals.user.lastName.charAt(0) %>
+      </div>
+
+      <h5 class="mb-1 fw-bold" style="color:#ffffff;">
+        <%= locals.user.firstName %> <%= locals.user.lastName %>
+      </h5>
+
+      <p class="small mb-2" style="color:#aaaaaa;">
+        <%= locals.user.email %>
+      </p>
+
+    <% } %>
+  </div>
+
+  <hr class="border-secondary my-3">
+
+  <nav class="profile-sidebar-nav">
+
+    <a href="/profile" class="<%= active === 'profile' ? 'sidebar-active' : '' %>">
+      <i class="fas fa-user-circle me-2"></i>My Profile
+    </a>
+
+    <a href="/orders" class="<%= active === 'orders' ? 'sidebar-active' : '' %>">
+      <i class="fas fa-shopping-bag me-2"></i>My Orders
+    </a>
+
+    <a href="/profile/address" class="<%= active === 'addresses' ? 'sidebar-active' : '' %>">
+      <i class="fas fa-map-marker-alt me-2"></i>Manage Addresses
+    </a>
+
+    <a href="/profile/change-password" class="<%= active === 'password' ? 'sidebar-active' : '' %>">
+      <i class="fas fa-lock me-2"></i>Change Password
+    </a>
+
+    <hr class="border-secondary my-3">
+
+    <a href="/profile">
+      <i class="fas fa-tag me-2"></i>My Coupons
+    </a>
+
+    <a href="/wishlist">
+      <i class="fas fa-heart me-2"></i>Wishlist
+    </a>
+
+    <a href="/profile">
+      <i class="fas fa-wallet me-2"></i>Wallet
+    </a>
+
+    <hr class="border-secondary my-3">
+
+    <a href="/logout" class="sidebar-logout">
+      <i class="fas fa-sign-out-alt me-2"></i>Logout
+    </a>
+
+  </nav>
+
+</div>
