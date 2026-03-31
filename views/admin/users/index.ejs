@@ -415,10 +415,10 @@
                   </div>
                   ...
                   <div class="col-md-4">
-                    <label class="form-label small text-light">Password_hash</label>
+                    <label class="form-label small text-light">Password</label>
                     <input type="password" name="password"
                       class="form-control bg-dark text-white border-0 shadow-none <%= (locals.addFieldErrors && locals.addFieldErrors.password) ? 'is-invalid' : '' %>"
-                      minlength="6">
+                      minlength="8">
                     <% if (locals.addFieldErrors && locals.addFieldErrors.password) { %>
                       <div class="invalid-feedback"><%= locals.addFieldErrors.password %></div>
                     <% } %>

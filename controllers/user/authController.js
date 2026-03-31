@@ -5,6 +5,7 @@ import { sendOTP } from '../../services/user/mailer.js';
 import {
     signupSchema,
     loginSchema,
+    passwordSchema,
     formatZodErrors,
     getPasswordCriteriaErrors,
 } from '../../utils/validators.js';
@@ -25,7 +26,7 @@ export const getSignup = (req, res) =>
 
 export const getForgotPassword = (req, res) =>
     res.render('user/forgot-password', { title: 'Forgot Password', error: null, message: null });
-
+passwordSchema
 export const getResetPassword = (req, res) => {
     if (!req.query.email) return res.redirect('/forgot-password');
     res.render('user/reset-password', {
@@ -98,6 +99,8 @@ export const postSignup = async (req, res) => {
         }
         }
 
+
+
         const usernameExists = await User.findOne({ username: data.username });
         if (usernameExists) {
             if (!usernameExists.isActive) {
@@ -140,6 +143,8 @@ export const postSignup = async (req, res) => {
             isActive: false,
             addresses,
         });
+
+        
 
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const otpHash = await bcrypt.hash(otp, 10);
@@ -418,6 +423,7 @@ export const getfChangePassword = (req, res) => {
         title: 'Change Password',
         email: resetSession.email,
         error: null,
+        passwordCriteria: getPasswordCriteriaErrors(''),
     });
 };
 
@@ -434,6 +440,7 @@ export const postfChangePassword = async (req, res) => {
             title: 'Change Password',
             email,
             error,
+            passwordCriteria: getPasswordCriteriaErrors(password || ''),
         });
 
     if (password !== confirmPassword) {
@@ -441,6 +448,8 @@ export const postfChangePassword = async (req, res) => {
     }
 
     try {
+        passwordSchema.parse(password);
+
         const hash = await bcrypt.hash(password, 12);
 
         const user = await User.findOne({ email: email.toLowerCase() });
@@ -461,8 +470,12 @@ export const postfChangePassword = async (req, res) => {
         res.redirect('/');
 
     } catch (err) {
-        console.error('[postfChangePassword error]', err);
-        renderChange('Something went wrong. Please try again.');
+        if (err.name === 'ZodError') {
+            const msg = err.issues?.[0]?.message || 'Password does not meet the security requirements.';
+            return renderChange(msg);
+        }
+        
+        renderChange(err.message || 'Something went wrong. Please try again.');
     }
 };
 

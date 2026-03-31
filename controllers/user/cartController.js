@@ -86,10 +86,15 @@ export const addToCart = async (req, res) => {
         if (product.outOfstock) return res.redirect('/cart?error=Product+is+out+of+stock');
 
         const cart = await Cart.findOne({ userId });
+        const MAX_QTY = 6;
 
         if (cart) {
             const existing = cart.items.find(i => i.productId.toString() === productId);
             if (existing) {
+                if (existing.quantity >= MAX_QTY) {
+                    const back = req.headers.referer || '/cart';
+                    return res.redirect(back + (back.includes('?') ? '&' : '?') + 'error=Maximum+quantity+of+6+per+item+reached');
+    }
 
                 if (existing.quantity < product.stockQuantity) {
                     existing.quantity += 1;
@@ -136,7 +141,8 @@ export const updateCartItem = async (req, res) => {
             return res.status(403).json({ ok: false, blocked: true, message: 'This product has been blocked by the admin.' });
         }
 
-        const safeQty = Math.min(qty, product.stockQuantity);
+        const MAX_QTY = 6;
+        const safeQty = Math.min(qty, product.stockQuantity, MAX_QTY);
 
         await Cart.findOneAndUpdate(
             { userId: req.session.user.id, 'items.productId': productId },

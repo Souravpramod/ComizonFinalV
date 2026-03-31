@@ -61,13 +61,13 @@
                                 <hr class="border-secondary my-4">
 
                                 <h5 class="fw-bold mb-3">Search</h5>
-                                <form action="/american" method="GET">
+                               <form action="/american" method="GET" id="search-form">
                                   <input type="hidden" name="category" value="<%= activeCategory %>">
                                   <input type="hidden" name="sort" value="<%= sort %>">
                                   <input type="hidden" name="page" value="1">
                                   <div class="input-group">
                                     <input type="text" class="form-control bg-black text-light border-secondary rounded-0 shadow-none"
-                                      name="search" placeholder="Search comics..." value="<%= search %>">
+                                      id="search-input" name="search" placeholder="Search comics..." value="<%= search %>">
                                     <button class="btn btn-danger rounded-0" type="submit"><i class="fas fa-search"></i></button>
                                   </div>
                                 </form>
@@ -78,7 +78,7 @@
 
 <h5 class="fw-bold mb-3">Price Range</h5>
 
-                <form action="/american" method="GET">   <!-- change action per page: /manga or /toys -->
+                <form action="/american" method="GET" id="price-form">
                     <input type="hidden" name="category" value="<%= activeCategory %>">
                     <input type="hidden" name="sort" value="<%= sort %>">
                     <input type="hidden" name="search" value="<%= search %>">
@@ -87,6 +87,7 @@
                     <div class="mb-2">
                         <input type="range"
                             class="form-range"
+                            id="price-range"
                             name="maxPrice"
                             min="0"
                             max="1000"
@@ -119,11 +120,11 @@
                                   <% if (search) { %><span class="text-muted fs-6 ms-2 text-lowercase fw-normal">"<%= search %>"</span><% } %>
                                 </h2>
                                 <div class="d-flex align-items-center gap-3">
-                                    <span class="text-muted small">Showing <%= displayProducts.length %> of <%=
+                                    <span class="text-muted small" id="showing-count">Showing <%= displayProducts.length %> of <%=
                                                 totalProducts||displayProducts.length %></span>
                                     <select
                                         class="form-select form-select-sm bg-black text-light border-secondary rounded-0 shadow-none"
-                                        onchange="location.href='/american?sort='+this.value+'&category=<%= activeCategory %>&page=<%= currentPage %>&search=<%= encodeURIComponent(search) %>'">
+                                        id="sort-select">
                                         <option value="featured" <%=sort==='featured' ?'selected':'' %>>Sort: Featured
                                         </option>
                                         <option value="az" <%=sort==='az' ?'selected':'' %>>A–Z</option>
@@ -134,7 +135,7 @@
                                 </div>
                             </div>
 
-                            <div class="row g-4">
+                            <div class="row g-4" id="product-grid">
                                 <% if (displayProducts.length > 0) { %>
                                 <% displayProducts.forEach(p=> { %>
                                     <div class="col-md-4">
@@ -187,17 +188,19 @@
                             </div>
 
                             <% if (totalPages> 1) { %>
-                                <nav aria-label="Page navigation" class="mt-5 d-flex justify-content-center">
+                                <nav aria-label="Page navigation" class="mt-5 d-flex justify-content-center" id="pagination-wrap">
                                     <ul class="pagination">
                                         <li class="page-item <%= currentPage===1?'disabled':'' %>">
                                             <a class="page-link <%= currentPage===1?'bg-dark text-white border-secondary':'bg-dark text-white border-secondary hover-danger' %>"
                                                 href="/american?page=<%= currentPage-1 %>&category=<%= activeCategory %>&sort=<%= sort %>&search=<%= encodeURIComponent(search) %>"
+                                                data-page="<%= currentPage-1 %>"
                                                 <%=currentPage===1?'tabindex="-1" aria-disabled="true"':'' %>>Previous</a>
               </li>
               <% for (let i=1; i<=totalPages; i++) { %>
                 <li class="page-item <%= i===currentPage?' active':'' %>">
                                                 <a class="page-link <%= i===currentPage?'bg-danger text-white border-danger':'bg-dark text-white border-secondary hover-danger' %>"
-                                                    href="/american?page=<%= i %>&category=<%= activeCategory %>&sort=<%= sort %>&search=<%= encodeURIComponent(search) %>">
+                                                    href="/american?page=<%= i %>&category=<%= activeCategory %>&sort=<%= sort %>&search=<%= encodeURIComponent(search) %>"
+                                                    data-page="<%= i %>">
                                                     <%= i %>
                                                 </a>
                                         </li>
@@ -205,6 +208,7 @@
                                             <li class="page-item <%= currentPage===totalPages?'disabled':'' %>">
                                                 <a class="page-link <%= currentPage===totalPages?'bg-dark text-white border-secondary':'bg-dark text-white border-secondary hover-danger' %>"
                                                     href="/american?page=<%= currentPage+1 %>&category=<%= activeCategory %>&sort=<%= sort %>&search=<%= encodeURIComponent(search) %>"
+                                                    data-page="<%= currentPage+1 %>"
                                                     <%=currentPage===totalPages?'tabindex="-1" aria-disabled="true"':'' %>>Next</a>
                   </li>
             </ul>
@@ -215,6 +219,20 @@
   </section>
 
   <%- include('../partials/footer') %>
+
+
+  <script>
+  window.LISTING_BASE  = '/american';
+  window.LISTING_STATE = {
+    category : '<%= activeCategory %>',
+    sort     : '<%= sort %>',
+    search   : '<%= search %>',
+    minPrice : <%= typeof locals.minPrice !== 'undefined' ? locals.minPrice : 0 %>,
+    maxPrice : <%= typeof locals.maxPrice !== 'undefined' ? locals.maxPrice : 1000 %>,
+    page     : <%= currentPage %>
+  };
+</script>
+<script src="/js/user/listing-ajax.js"></script>
         </body>
 
         </html>

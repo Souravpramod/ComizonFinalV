@@ -107,7 +107,7 @@ class="<%= activeCategory === cat.key ? 'active' : '' %>">
 </ul>
 <h5 class="fw-bold mb-3">Search</h5>
 
-<form action="/toys" method="GET">
+<form action="/toys" method="GET" id="search-form">
 <input type="hidden" name="category" value="<%= activeCategory %>">
 <input type="hidden" name="sort" value="<%= sort %>">
 <input type="hidden" name="page" value="1">
@@ -115,8 +115,9 @@ class="<%= activeCategory === cat.key ? 'active' : '' %>">
 <div class="input-group">
 <input type="text"
 class="form-control bg-black text-light border-secondary"
+id="search-input"
 name="search"
-placeholder="Search manga..."
+placeholder="Search toys..."
 value="<%= search %>">
 
 <button class="btn btn-danger">
@@ -134,7 +135,7 @@ value="<%= search %>">
 
 <h5 class="fw-bold mb-3">Price Range</h5>
 
-<form action="/toys" method="GET">   <!-- change action per page: /manga or /toys -->
+<form action="/toys" method="GET" id="price-form">
     <input type="hidden" name="category" value="<%= activeCategory %>">
     <input type="hidden" name="sort" value="<%= sort %>">
     <input type="hidden" name="search" value="<%= search %>">
@@ -143,6 +144,7 @@ value="<%= search %>">
     <div class="mb-2">
         <input type="range"
             class="form-range"
+            id="price-range"
             name="maxPrice"
             min="0"
             max="1000"
@@ -185,13 +187,13 @@ Toys & Figures
 
 <div class="d-flex align-items-center gap-3">
 
-<span class="text-muted small">
+<span class="text-muted small" id="showing-count">
 Showing <%= displayProducts.length %> of <%= totalProducts || displayProducts.length %>
 </span>
 
 <select
 class="form-select form-select-sm bg-black text-light border-secondary rounded-0 shadow-none"
-onchange="location.href='/toys?sort='+this.value+'&category=<%= activeCategory %>&page=<%= currentPage %>&search=<%= encodeURIComponent(search) %>'">
+id="sort-select">
 
 <option value="featured" <%= sort === 'featured' ? 'selected' : '' %>>Sort: Featured</option>
 <option value="az" <%= sort === 'az' ? 'selected' : '' %>>A–Z</option>
@@ -207,7 +209,7 @@ onchange="location.href='/toys?sort='+this.value+'&category=<%= activeCategory %
 
 
 
-<div class="row g-4">
+<div class="row g-4" id="product-grid">
 
 <% if (displayProducts.length > 0) { %>
 
@@ -300,14 +302,15 @@ alt="<%= p.name %>">
 
 <% if (totalPages > 1) { %>
 
-<nav class="mt-5 d-flex justify-content-center">
+<nav class="mt-5 d-flex justify-content-center" id="pagination-wrap">
 
 <ul class="pagination">
 
 <li class="page-item <%= currentPage === 1 ? 'disabled' : '' %>">
 
 <a class="page-link bg-dark text-white border-secondary"
-href="/toys?page=<%= currentPage-1 %>&category=<%= activeCategory %>&sort=<%= sort %>&search=<%= encodeURIComponent(search) %>">
+href="/toys?page=<%= currentPage-1 %>&category=<%= activeCategory %>&sort=<%= sort %>&search=<%= encodeURIComponent(search) %>"
+data-page="<%= currentPage-1 %>">
 
 Previous
 
@@ -321,7 +324,8 @@ Previous
 <li class="page-item <%= i===currentPage?'active':'' %>">
 
 <a class="page-link <%= i===currentPage?'bg-danger text-white border-danger':'bg-dark text-white border-secondary' %>"
-href="/toys?page=<%= i %>&category=<%= activeCategory %>&sort=<%= sort %>&search=<%= encodeURIComponent(search) %>">
+href="/toys?page=<%= i %>&category=<%= activeCategory %>&sort=<%= sort %>&search=<%= encodeURIComponent(search) %>"
+data-page="<%= i %>">
 
 <%= i %>
 
@@ -335,7 +339,8 @@ href="/toys?page=<%= i %>&category=<%= activeCategory %>&sort=<%= sort %>&search
 <li class="page-item <%= currentPage===totalPages?'disabled':'' %>">
 
 <a class="page-link bg-dark text-white border-secondary"
-href="/toys?page=<%= currentPage+1 %>&category=<%= activeCategory %>&sort=<%= sort %>&search=<%= encodeURIComponent(search) %>">
+href="/toys?page=<%= currentPage+1 %>&category=<%= activeCategory %>&sort=<%= sort %>&search=<%= encodeURIComponent(search) %>"
+data-page="<%= currentPage+1 %>">
 
 Next
 
@@ -356,6 +361,19 @@ Next
 </section>
 
 <%- include('../partials/footer') %>
+
+<script>
+  window.LISTING_BASE  = '/toys';
+  window.LISTING_STATE = {
+    category : '<%= activeCategory %>',
+    sort     : '<%= sort %>',
+    search   : '<%= search %>',
+    minPrice : <%= typeof locals.minPrice !== 'undefined' ? locals.minPrice : 0 %>,
+    maxPrice : <%= typeof locals.maxPrice !== 'undefined' ? locals.maxPrice : 1000 %>,
+    page     : <%= currentPage %>
+  };
+</script>
+<script src="/js/user/listing-ajax.js"></script>
 
 </body>
 </html>

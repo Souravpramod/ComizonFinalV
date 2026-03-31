@@ -335,22 +335,36 @@
 <script>
     const addCroppers = {};
 
-    for (let i = 0; i < 3; i++) {
-        document.getElementById('addImage' + i).addEventListener('change', function (e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function (ev) {
-                const preview = document.getElementById('addPreview' + i);
-                preview.innerHTML = '<img id="addCropImg' + i + '" style="max-width:100%;margin-top:6px;">';
-                const img = document.getElementById('addCropImg' + i);
-                img.src = ev.target.result;
-                if (addCroppers[i]) addCroppers[i].destroy();
-                addCroppers[i] = new Cropper(img, { aspectRatio: 3 / 4, viewMode: 1 });
-            };
-            reader.readAsDataURL(file);
-        });
-    }
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/heif', 'image/heic', 'image/avif'];
+const ALLOWED_EXTS  = /\.(jpe?g|png|heif|heic|avif)$/i;
+
+function isValidImageFile(file) {
+    return ALLOWED_TYPES.includes(file.type) || ALLOWED_EXTS.test(file.name);
+}
+
+for (let i = 0; i < 3; i++) {
+    document.getElementById('addImage' + i).addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!isValidImageFile(file)) {
+            alert('Invalid file type for Image ' + (i + 1) + '.\nAllowed formats: JPEG, JPG, PNG, HEIF, HEIC, AVIF');
+            this.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+            const preview = document.getElementById('addPreview' + i);
+            preview.innerHTML = '<img id="addCropImg' + i + '" style="max-width:100%;margin-top:6px;">';
+            const img = document.getElementById('addCropImg' + i);
+            img.src = ev.target.result;
+            if (addCroppers[i]) addCroppers[i].destroy();
+            addCroppers[i] = new Cropper(img, { aspectRatio: 3 / 4, viewMode: 1 });
+        };
+        reader.readAsDataURL(file);
+    });
+}
 
     document.getElementById('addProductForm').addEventListener('submit', async function (e) {
         e.preventDefault();

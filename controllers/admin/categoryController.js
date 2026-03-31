@@ -54,16 +54,16 @@ export const getCategories = async (req, res) => {
                 : 0;
     }
 
-    let largestCategory = { name:'None', percentage:0 };
+    const allCategories = await Category.find({ isActive: true }).lean();
+    let largestCategory = { name: 'None', percentage: 0 };
 
-    categories.forEach(cat=>{
-        if(cat.totalPercentage > largestCategory.percentage){
-            largestCategory = {
-                name:cat.categoryName,
-                percentage:cat.totalPercentage
-            }
+    for (const cat of allCategories) {
+        const count = await Product.countDocuments({ categoryId: cat._id, isActive: true });
+        const pct = totalProducts > 0 ? Number(((count / totalProducts) * 100).toFixed(1)) : 0;
+        if (pct > largestCategory.percentage) {
+            largestCategory = { name: cat.categoryName, percentage: pct };
         }
-    });
+    }
         res.render('admin/categories/index', {
             title:'Category Management',
             categories,

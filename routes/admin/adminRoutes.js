@@ -12,7 +12,8 @@ import {
     postToggleBlock,
     createUser,
     updateUser,
-    deleteUser
+    deleteUser,
+    viewUser
 } from '../../controllers/admin/adminUserController.js';
 
 import {
@@ -74,6 +75,7 @@ router.get('/dashboard', getDashboard);
 
 // ───────── USERS ─────────
 router.get('/users', getUsers);
+router.get('/users/view/:id', viewUser);
 router.post('/users', createUser);
 router.post('/users/update/:id', updateUser);
 router.post('/users/delete/:id', deleteUser);

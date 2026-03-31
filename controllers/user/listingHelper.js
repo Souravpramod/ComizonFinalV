@@ -5,6 +5,8 @@ export async function renderListingPage(req, res, pageName, viewName, heroImage)
 
     const { page = 1, category = 'all', sort = 'featured', search = '', minPrice = 0, maxPrice = 1000 } = req.query;
 
+    const isAjax = req.query.ajax === '1';
+
     const limit = 9;
     const currentPage = Number(page) || 1;
 
@@ -60,7 +62,7 @@ export async function renderListingPage(req, res, pageName, viewName, heroImage)
             .limit(limit)
             .lean();
 
-       const products = dbProducts.map(p => ({
+        const products = dbProducts.map(p => ({
             _id: p._id.toString(),
             name: p.productName,
 
@@ -77,6 +79,20 @@ export async function renderListingPage(req, res, pageName, viewName, heroImage)
             rating: p.reviewStat?.averageRating || 0,
             reviews: p.reviewStat?.totalReviews || 0
         }));
+
+        if (isAjax) {
+            return res.json({
+                products,
+                totalProducts,
+                totalPages,
+                currentPage,
+                activeCategory: category,
+                sort,
+                search,
+                minPrice,
+                maxPrice
+            });
+        }
 
         res.render(viewName, {
             title: pageName.charAt(0).toUpperCase() + pageName.slice(1),

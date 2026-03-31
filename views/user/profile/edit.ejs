@@ -1,0 +1,79 @@
+<%- include('../../partials/user-head', { title: 'Edit Profile' }) %>
+<body class="bg-black text-light">
+<%- include('../../partials/header') %>
+
+<div class="container" style="margin-top:100px; margin-bottom:4rem;">
+  <div class="row g-4">
+    <!-- Sidebar -->
+    <div class="col-lg-3">
+      <%- include('../../partials/profile-sidebar', { activePage: 'profile' }) %>
+    </div>
+    <!-- Main Content -->
+    <div class="col-lg-9">
+      <div class="bg-dark border border-secondary p-4 mb-4" style="border-top:4px solid var(--primary-red) !important;">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h5 class="fw-bold text-uppercase border-start border-4 border-danger ps-3 mb-0">Edit Profile</h5>
+          <a href="/profile" class="btn btn-outline-secondary btn-sm rounded-0"><i class="fas fa-times me-1"></i>Cancel</a>
+        </div>
+
+        <% if (locals.error) { %><div class="alert alert-danger rounded-0 small"><%= error %></div><% } %>
+
+        <!-- Removed enctype="multipart/form-data" — was causing req.body to be undefined -->
+        <form action="/profile/edit" method="POST">
+
+          <!-- Avatar initials display (no upload for now) -->
+          <div class="text-center mb-4">
+            <div class="mx-auto mb-3 d-flex align-items-center justify-content-center bg-danger rounded-circle text-white fw-bold"
+                 style="width:90px;height:90px;font-size:2.2rem;border:3px solid #FFD700;">
+              <%= locals.user ? user.firstName.charAt(0) : 'U' %><%= locals.user ? user.lastName.charAt(0) : '' %>
+            </div>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label text-danger small fw-bold">FIRST NAME</label>
+              <input type="text" name="firstName" class="form-control bg-black border-secondary text-white rounded-0"
+                     value="<%= locals.user ? user.firstName : '' %>" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-danger small fw-bold">LAST NAME</label>
+              <input type="text" name="lastName" class="form-control bg-black border-secondary text-white rounded-0"
+                     value="<%= locals.user ? user.lastName : '' %>" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-danger small fw-bold">USERNAME</label>
+              <input type="text" name="username" class="form-control bg-black border-secondary text-white rounded-0"
+                     value="<%= locals.user ? user.username : '' %>" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-danger small fw-bold">GENDER</label>
+              <select name="gender" class="form-select bg-black border-secondary text-white rounded-0">
+                <option value="male"   <%= locals.user && user.gender==='male'   ? 'selected' : '' %>>Male</option>
+                <option value="female" <%= locals.user && user.gender==='female' ? 'selected' : '' %>>Female</option>
+                <option value="other"  <%= locals.user && user.gender==='other'  ? 'selected' : '' %>>Other</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-danger small fw-bold">PHONE</label>
+              <input type="tel" name="phone" class="form-control bg-black border-secondary text-white rounded-0"
+                     value="<%= locals.user ? (user.phone || '') : '' %>">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-danger small fw-bold">EMAIL <span class="text-muted small">(read-only)</span></label>
+              <input type="email" class="form-control bg-black border-secondary text-muted rounded-0"
+                     value="<%= locals.user ? user.email : '' %>" readonly>
+            </div>
+          </div>
+
+          <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-danger rounded-0 px-4 fw-bold">Save Changes</button>
+            <a href="/profile" class="btn btn-outline-secondary rounded-0 px-4">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%- include('../../partials/footer') %>
+</body></html>

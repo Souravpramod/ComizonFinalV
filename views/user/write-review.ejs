@@ -16,13 +16,37 @@
   <div style="background:#0d0d0d; border-bottom:1px solid #333;" class="py-2">
     <div class="container">
       <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0 small" style="--bs-breadcrumb-divider-color:#666;">
-          <li class="breadcrumb-item"><a href="/" class="text-muted text-decoration-none">Home</a></li>
+       <%
+        const listingUrl   = locals.listingUrl   || '/';
+        const listingLabel = locals.listingLabel || 'Home';
+        const categoryUrl  = locals.categoryUrl  || listingUrl;
+        const catName      = p.categoryId?.categoryName || '';
+      %>
+      <ol class="breadcrumb mb-0 small" style="--bs-breadcrumb-divider-color:#666;">
+
+        <%# Crumb 1 — listing page %>
+        <li class="breadcrumb-item">
+          <a href="<%= listingUrl %>" class="text-white text-decoration-none"><%= listingLabel %></a>
+        </li>
+
+        <%# Crumb 2 — category %>
+        <% if (catName) { %>
           <li class="breadcrumb-item">
-            <a href="/product/<%= p._id %>" class="text-muted text-decoration-none"><%= p.productName %></a>
+            <a href="<%= categoryUrl %>" class="text-white text-decoration-none"><%= catName %></a>
           </li>
-          <li class="breadcrumb-item active text-white" aria-current="page">Write a Review</li>
-        </ol>
+        <% } %>
+
+        <%# Crumb 3 — product %>
+        <li class="breadcrumb-item">
+          <a href="/product/<%= p._id %>" class="text-white text-decoration-none"
+            style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block;"
+            title="<%= p.productName %>"><%= p.productName %></a>
+        </li>
+
+        <%# Crumb 4 — current page %>
+        <li class="breadcrumb-item active text-white" aria-current="page">Write a Review</li>
+
+      </ol>
       </nav>
     </div>
   </div>

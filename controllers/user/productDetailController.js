@@ -35,10 +35,10 @@ function mapRec(p) {
 
 function listingRedirect(product) {
     const cat = (product?.categoryId?.categoryName || '').toLowerCase();
-    if (cat === 'marvel' || cat === 'dc') return '/american';
-    if (cat === 'manga')                  return '/manga';
-    if (cat === 'toys')                   return '/toys';
-    return '/';
+    if (cat === 'marvel' || cat === 'dc') return { path: '/american', label: 'American Comics' };
+    if (cat === 'manga')                  return { path: '/manga',    label: 'Manga' };
+    if (cat === 'toys')                   return { path: '/toys',     label: 'Toys & Figures' };
+    return { path: '/', label: 'Home' };
 }
 
 
@@ -74,11 +74,20 @@ export const getProductDetail = async (req, res) => {
         const discount      = product.isPremium ? 25 : 0;
         const originalPrice = discount ? +(product.price / (1 - discount / 100)).toFixed(2) : null;
 
+        const listing       = listingRedirect(product);
+        const categoryId    = product?.categoryId?._id?.toString() || '';
+        // Build filtered category URL: page + category ID pre-applied
+        const categoryUrl   = categoryId
+            ? `${listing.path}?category=${categoryId}&sort=featured&search=&minPrice=0&maxPrice=1000&page=1`
+            : listing.path;
+
         res.render('user/product-detail', {
             title:           product.productName,
             product,
             status,
-            listingUrl:      listingRedirect(product),
+            listingUrl:      listing.path,     
+            listingLabel:    listing.label,    
+            categoryUrl,                       
             recommendations: recommendations.map(mapRec),
             reviews:         reviewData.items,
             reviewTotal:     reviewData.total,
@@ -110,11 +119,20 @@ export const getWriteReview = async (req, res) => {
   
     const existing = await Review.findOne({ productId: id, userId: req.session.user.id }).lean();
 
+    const listing   = listingRedirect(product);
+    const categoryId = product?.categoryId?._id?.toString() || '';
+    const categoryUrl = categoryId
+        ? `${listing.path}?category=${categoryId}&sort=featured&search=&minPrice=0&maxPrice=1000&page=1`
+        : listing.path;
+
     res.render('user/write-review', {
-        title:   `Review — ${product.productName}`,
+        title:       `Review — ${product.productName}`,
         product,
-        existing: existing || null,
-        error:    null,
+        existing:    existing || null,
+        error:       null,
+        listingUrl:  listing.path,
+        listingLabel: listing.label,
+        categoryUrl,
     });
 };
 
@@ -134,11 +152,20 @@ export const postWriteReview = async (req, res) => {
 
 
     if (!ratingNum || ratingNum < 1 || ratingNum > 5) {
+        const listing    = listingRedirect(product);
+        const categoryId = product?.categoryId?._id?.toString() || '';
+        const categoryUrl = categoryId
+            ? `${listing.path}?category=${categoryId}&sort=featured&search=&minPrice=0&maxPrice=1000&page=1`
+            : listing.path;
+
         return res.render('user/write-review', {
-            title:    `Review — ${product.productName}`,
+            title:        `Review — ${product.productName}`,
             product,
-            existing: null,
-            error:    'Please select a rating between 1 and 5.',
+            existing:     null,
+            error:        'Please select a rating between 1 and 5.',
+            listingUrl:   listing.path,
+            listingLabel: listing.label,
+            categoryUrl,
         });
     }
 

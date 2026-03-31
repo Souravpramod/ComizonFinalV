@@ -7,7 +7,9 @@
   const listingUrl      = locals.listingUrl || '/';
   const recs            = Array.isArray(locals.recommendations) ? locals.recommendations : [];
   const reviews         = Array.isArray(locals.reviews) ? locals.reviews : [];
-  const reviewTotal     = locals.reviewTotal || 0;
+ const reviewTotal     = locals.reviewTotal || 0;
+  const listingLabel    = locals.listingLabel  || 'Home';
+  const categoryUrl     = locals.categoryUrl   || listingUrl;
   const reviewPages     = locals.reviewPages || 1;
   const reviewPage      = locals.reviewPage  || 1;
   const ratingBreakdown = Array.isArray(locals.ratingBreakdown) ? locals.ratingBreakdown : [];
@@ -54,18 +56,31 @@
 
 <div style="margin-top:76px;">
 
-  <!-- ── BREADCRUMB ─────────────────────────────────────────── -->
+<!-- ── BREADCRUMB ─────────────────────────────────────────── -->
   <div style="background:#0d0d0d; border-bottom:1px solid #333;" class="py-2">
     <div class="container">
       <nav aria-label="breadcrumb">
         <ol class="breadcrumb mb-0 small" style="--bs-breadcrumb-divider-color:#666;">
-          <li class="breadcrumb-item"><a href="/" class="text-white text-decoration-none">Home</a></li>
+
+          <%# Crumb 1 — the listing page (Home / American Comics / Manga / Toys) %>
+          <li class="breadcrumb-item">
+            <a href="<%= listingUrl %>" class="text-white text-decoration-none"><%= listingLabel %></a>
+          </li>
+
+          <%# Crumb 2 — the specific category, pre-filtered URL %>
           <% if (catName) { %>
             <li class="breadcrumb-item">
-              <a href="<%= listingUrl %>" class="text-white text-decoration-none"><%= catName %></a>
+              <a href="<%= categoryUrl %>" class="text-white text-decoration-none"><%= catName %></a>
             </li>
           <% } %>
-          <li class="breadcrumb-item active text-white" aria-current="page"><%= p.productName %></li>
+
+          <%# Crumb 3 — current product (not a link) %>
+          <li class="breadcrumb-item active text-white" aria-current="page"
+    style="max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"
+    title="<%= p.productName %>">
+  <%= p.productName %>
+</li>
+
         </ol>
       </nav>
     </div>
@@ -149,11 +164,30 @@
 
   </div>
 
-  <p class="text-muted small mt-2 text-center">
+  <p class="text-white small mt-2 text-center">
     <i class="fas fa-search-plus me-1"></i>Hover to zoom
   </p>
+
+  <!-- DESCRIPTION — inside left col, below image -->
+  <div class="mt-4 p-4 border border-secondary rounded-0" style="background:#111; border-left:4px solid #E63946 !important;">
+    <h6 class="text-uppercase fw-bold text-white mb-3"
+        style="letter-spacing:1.5px; font-size:0.8rem;">
+      <i class="fas fa-align-left me-2 text-danger"></i>Description
+    </h6>
+    <% if (p.description && p.description.trim().length > 0) { %>
+      <p class="text-white-50 lh-lg mb-0" style="font-size:0.95rem;">
+        <%= p.description %>
+      </p>
+    <% } else { %>
+      <p class="text-white mb-1" style="font-size:0.9rem;">
+        <i class="fas fa-clock me-2 text-danger"></i>Description not yet added — coming soon.
+      </p>
+    <% } %>
+  </div>
+
 </div>
 
+     
       <!-- RIGHT: Product Info -->
       <div class="col-lg-7">
 
@@ -163,7 +197,7 @@
             <span class="text-danger small fw-bold text-uppercase" style="letter-spacing:1px;"><%= catName %></span>
           <% } %>
           <% if (p.sku) { %>
-            <span class="text-muted small">SKU: <%= p.sku %></span>
+            <span class="text-white small">SKU: <%= p.sku %></span>
           <% } %>
         </div>
 
@@ -174,14 +208,14 @@
 
         <!-- Author -->
         <% if (p.author) { %>
-          <p class="text-muted mb-3">By <span class="text-white-50"><%= p.author %></span></p>
+          <p class="text-white mb-3">By <span class="text-white-50"><%= p.author %></span></p>
         <% } %>
 
         <!-- Rating row -->
         <div class="d-flex align-items-center gap-3 mb-4">
           <div><%- stars(avg) %></div>
           <span class="text-warning fw-bold"><%= avg.toFixed(1) %></span>
-          <a href="#reviews" class="text-muted small text-decoration-none">
+          <a href="#reviews" class="text-white small text-decoration-none">
             (<%= totalReviews %> <%= totalReviews === 1 ? 'Review' : 'Reviews' %>)
           </a>
           <% if (!userHasReviewed && isLoggedIn) { %>
@@ -200,7 +234,7 @@
               $<%= Number(p.price).toFixed(2) %>
             </span>
             <% if (originalPrice) { %>
-              <span class="text-muted text-decoration-line-through fs-5">$<%= originalPrice.toFixed(2) %></span>
+              <span class="text-white text-decoration-line-through fs-5">$<%= originalPrice.toFixed(2) %></span>
               <span class="badge bg-danger rounded-0 fw-bold" style="font-size:0.8rem;">SAVE <%= discount %>%</span>
             <% } %>
           </div>
@@ -247,7 +281,7 @@
             <button class="btn btn-outline-danger rounded-0" onclick="checkDelivery()">Check</button>
           </div>
           <div id="delivery-result" class="mt-2"></div>
-          <p class="text-muted small mb-0 mt-2">
+          <p class="text-white small mb-0 mt-2">
             <i class="fas fa-tag text-danger me-1"></i> Free delivery over $35
           </p>
         </div>
@@ -320,18 +354,18 @@
           <div class="text-center border border-secondary p-4 rounded-0" style="background:#111;">
             <div class="display-3 fw-bold text-white mb-1"><%= avg.toFixed(1) %></div>
             <div class="mb-2"><%- stars(avg) %></div>
-            <div class="text-muted small"><%= totalReviews %> <%= totalReviews === 1 ? 'review' : 'reviews' %></div>
+            <div class="text-white small"><%= totalReviews %> <%= totalReviews === 1 ? 'review' : 'reviews' %></div>
           </div>
           <!-- Star breakdown -->
           <div class="mt-3">
             <% ratingBreakdown.forEach(r => { %>
               <div class="d-flex align-items-center gap-2 mb-1 small">
-                <span class="text-muted" style="min-width:14px;"><%= r.star %></span>
+                <span class="text-white" style="min-width:14px;"><%= r.star %></span>
                 <i class="fas fa-star text-warning" style="font-size:0.7rem;"></i>
                 <div class="flex-grow-1 bg-dark rounded-0" style="height:6px;">
                   <div class="bg-warning rounded-0" style="height:100%; width:<%= r.pct %>%;"></div>
                 </div>
-                <span class="text-muted" style="min-width:28px;"><%= r.pct %>%</span>
+                <span class="text-white" style="min-width:28px;"><%= r.pct %>%</span>
               </div>
             <% }) %>
           </div>
@@ -349,10 +383,10 @@
                       <strong class="text-white"><%= r.title %></strong>
                     <% } %>
                   </div>
-                  <small class="text-muted"><%= new Date(r.createdAt).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' }) %></small>
+                  <small class="text-white"><%= new Date(r.createdAt).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' }) %></small>
                 </div>
                 <p class="text-white-50 small mb-1 lh-lg"><%= r.body || '' %></p>
-                <small class="text-muted">
+                <small class="text-white">
                   — <%= r.userId?.name || r.userId?.email?.split('@')[0] || 'Anonymous' %>
                 </small>
               </div>
@@ -373,8 +407,8 @@
             <% } %>
           <% } else { %>
             <div class="border border-secondary p-5 text-center rounded-0" style="background:#111;">
-              <i class="far fa-comment-alt text-muted mb-3" style="font-size:2rem;"></i>
-              <p class="text-muted mb-3">No reviews yet. Be the first to share your thoughts!</p>
+              <i class="far fa-comment-alt text-white mb-3" style="font-size:2rem;"></i>
+              <p class="text-white mb-3">No reviews yet. Be the first to share your thoughts!</p>
               <% if (isLoggedIn && !userHasReviewed) { %>
                 <a href="/product/<%= p._id %>/review" class="btn btn-danger rounded-0 btn-sm fw-bold">
                   <i class="fas fa-pen me-1"></i> Write a Review
@@ -431,7 +465,7 @@
     <div class="card-body">
 
       <!-- Category -->
-      <div class="text-muted small mb-1"><%= r.category %></div>
+      <div class="text-white small mb-1"><%= r.category %></div>
 
       <!-- Title -->
       <h5 class="card-title fw-bold text-truncate text-white">
@@ -449,7 +483,7 @@
           <% if(half){ %><i class="fas fa-star-half-alt"></i><% } %>
           <% for(let i=0;i<(5-full-(half?1:0));i++){ %><i class="far fa-star"></i><% } %>
         </div>
-        <span class="text-muted small">(<%= r.reviews || 0 %>)</span>
+        <span class="text-white small">(<%= r.reviews || 0 %>)</span>
       </div>
 
       <!-- Price + Cart -->

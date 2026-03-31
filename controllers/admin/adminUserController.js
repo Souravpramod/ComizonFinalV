@@ -85,7 +85,7 @@ export const postToggleBlock = async (req, res) => {
 export const createUser = async (req, res) => {
     const {
         firstName, lastName, email, password, role, isPremium,
-        username, phone, addressLane1, addressLane2, city, state, country, pincode, label
+        username, phone, gender, addressLane1, addressLane2, city, state, country, pincode, label
     } = req.body;
 
     
@@ -123,7 +123,19 @@ export const createUser = async (req, res) => {
         if (!firstName || !firstName.trim()) fieldErrors.firstName = 'First name is required';
         if (!lastName  || !lastName.trim())  fieldErrors.lastName  = 'Last name is required';
         if (!email     || !email.trim())     fieldErrors.email     = 'Email is required';
-        if (!password  || password.length < 6) fieldErrors.password = 'Password must be at least 6 characters';
+        else if (!/\S+@\S+\.\S+/.test(email)) fieldErrors.email   = 'Please enter a valid email address';
+
+        if (!password || !password.trim()) {
+            fieldErrors.password = 'Password is required';
+        } else if (password.length < 8) {
+            fieldErrors.password = 'Password must be at least 8 characters';
+        } else if (!/[a-zA-Z]/.test(password)) {
+            fieldErrors.password = 'Password must contain at least one letter';
+        } else if (!/[0-9]/.test(password)) {
+            fieldErrors.password = 'Password must contain at least one number';
+        } else if (!/[^a-zA-Z0-9]/.test(password)) {
+            fieldErrors.password = 'Password must contain at least one special character';
+        }
 
         if (!fieldErrors.email && email) {
             const existingUser = await User.findOne({ email });
@@ -146,6 +158,7 @@ export const createUser = async (req, res) => {
 
         const newUser = new User({
             firstName, lastName, username, email, phone,
+            gender: gender || '',
             passwordHash, role: userRole,
             isPremium: premiumStatus, isActive: true, isBlocked: false, addresses
         });
@@ -241,5 +254,21 @@ export const deleteUser = async (req, res) => {
     } catch (err) {
         console.error('Delete user error:', err.message);
         res.redirect('/admin/users?error=Could not delete user');
+    }
+};
+
+
+export const viewUser = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id).lean();
+        if (!user) return res.redirect('/admin/users?error=User+not+found');
+
+        res.render('admin/users/view', {
+            title: 'View User',
+            user,
+        });
+    } catch (err) {
+        console.error('getUser error:', err.message);
+        res.redirect('/admin/users?error=Failed+to+load+user');
     }
 };

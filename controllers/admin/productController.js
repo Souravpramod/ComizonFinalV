@@ -95,11 +95,22 @@ export const addProduct = async (req, res) => {
             return res.status(400).json({ ok: false, fieldErrors });
         }
 
+        const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/heif', 'image/heic', 'image/avif'];
+        const ALLOWED_EXT_REGEX  = /\.(jpe?g|png|heif|heic|avif)$/i;
+
         const images = [];
 
         for (let i = 0; i < 3; i++) {
             const uploadedFile = req.files && req.files[`image_${i}`] && req.files[`image_${i}`][0];
             if (uploadedFile) {
+                const mimeOk = ALLOWED_MIME_TYPES.includes(uploadedFile.mimetype);
+                const extOk  = ALLOWED_EXT_REGEX.test(uploadedFile.originalname);
+                if (!mimeOk && !extOk) {
+                    return res.status(400).json({
+                        ok: false,
+                        message: `Image ${i + 1} has an invalid format. Allowed: JPEG, JPG, PNG, HEIF, HEIC, AVIF`
+                    });
+                }
                 const url = await uploadToCloudinary(uploadedFile.buffer);
                 images.push(url);
             }

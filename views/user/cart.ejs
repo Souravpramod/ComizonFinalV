@@ -220,7 +220,7 @@
                                                 class="form-control form-control-sm quantity-input rounded-0"
                                                 value="<%= item.quantity %>"
                                                 min="1"
-                                                max="<%= item.stock %>"
+                                                max="<%= Math.min(item.stock, 6) %>"
                                                 data-product-id="<%= item._id %>"
                                                 data-original="<%= item.quantity %>"
                                                 onchange="updateQty(this)"

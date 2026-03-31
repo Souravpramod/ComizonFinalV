@@ -1,0 +1,110 @@
+<%- include('../../partials/user-head') %>
+
+    <body class="bg-black text-light">
+
+        <%- include('../../partials/header') %>
+
+            <div class="container profile-container" style="margin-top: 100px; margin-bottom: 4rem;">
+                <div class="row g-4">
+                    <!-- Sidebar -->
+                    <div class="col-lg-3">
+                        <%- include('../../partials/profile-sidebar', { activePage: 'profile' }) %>
+                    </div>
+
+                    <!-- Main Content -->
+                    <div class="col-lg-9">
+                        <div class="section-card p-4 bg-dark border border-secondary mb-3"
+                                    style="border-top: 4px solid <%= user.isPremium ? '#FFD700' : '#aaa' %>;">
+                                    
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        
+                                        <div>
+                                            <div class="usertype-label text-danger small fw-bold text-uppercase mb-1">
+                                                Account Type
+                                            </div>
+
+                                            <div class="fw-bold h5 mb-0"
+                                                style="color:<%= user.isPremium ? '#FFD700' : '#aaa' %>;">
+                                                
+                                                <%= user.isPremium ? 'Premium Member' : 'Regular Member' %>
+
+                                            </div>
+
+                                            <small style="color:#aaaaaa;">
+                                                This field is managed by Comizon.
+                                            </small>
+                                        </div>
+
+
+                                        <div class="premium-badge p-2 rounded fw-bold 
+                                            <%= user.isPremium ? 'bg-warning text-black' : 'bg-secondary text-white' %>">
+
+                                            <% if (user.isPremium) { %>
+                                                <i class="fas fa-crown me-1"></i> PREMIUM
+                                            <% } else { %>
+                                                <i class="fas fa-user me-1"></i> REGULAR
+                                            <% } %>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                        <div class="section-card p-4 bg-dark border border-secondary mb-4">
+                            <div class="section-title text-uppercase fw-bold mb-4 border-start border-4 border-danger ps-3">
+                                Personal Information</div>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label text-danger small fw-bold">FIRST NAME</label>
+                                    <input type="text"
+                                        class="form-control bg-black border-secondary text-white rounded-0"
+                                        value="<%= locals.user ? user.firstName : '' %>" readonly>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label text-danger small fw-bold">LAST NAME</label>
+                                    <input type="text"
+                                        class="form-control bg-black border-secondary text-white rounded-0"
+                                        value="<%= locals.user ? user.lastName : '' %>" readonly>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label text-danger small fw-bold">GENDER</label>
+                                    <input type="text"
+                                        class="form-control bg-black border-secondary text-white rounded-0"
+                                        value="<%= locals.user ? user.gender : '' %>" readonly>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="section-card p-4 bg-dark border border-secondary mb-4">
+                            <div class="section-title text-uppercase fw-bold mb-4 border-start border-4 border-danger ps-3">
+                                Account Details</div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label text-danger small fw-bold">USERNAME</label>
+                                    <input type="text"
+                                        class="form-control bg-black border-secondary text-white rounded-0"
+                                        value="<%= locals.user ? user.username : '' %>" readonly>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted small fw-bold">EMAIL ADDRESS <i class="fas fa-lock ms-1"></i></label>
+                                    <input type="email"
+                                        class="form-control bg-black border-secondary text-muted rounded-0"
+                                        value="<%= locals.user ? user.email : '' %>" readonly>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-3">
+                            <a href="/profile/edit" class="btn btn-danger rounded-0 fw-bold px-4">EDIT PROFILE</a>
+                            <!-- Fixed: was /addresses, now correctly /profile/address -->
+                            <a href="/profile/address" class="btn btn-outline-warning rounded-0 fw-bold px-4">MANAGE ADDRESSES</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <%- include('../../partials/footer') %>
+    </body>
+
+    </html>

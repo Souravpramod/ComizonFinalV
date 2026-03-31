@@ -171,12 +171,25 @@
   const croppers = {};
 
   // ── Cropper: one per slot ──────────────────────────────────────────────────
-  for (let i = 0; i < 3; i++) {
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/heif', 'image/heic', 'image/avif'];
+const ALLOWED_EXTS  = /\.(jpe?g|png|heif|heic|avif)$/i;
+
+function isValidImageFile(file) {
+    return ALLOWED_TYPES.includes(file.type) || ALLOWED_EXTS.test(file.name);
+}
+
+for (let i = 0; i < 3; i++) {
     const input = document.getElementById('editImage' + i);
 
     input.addEventListener('change', function (e) {
       const file = e.target.files[0];
       if (!file) return;
+
+      if (!isValidImageFile(file)) {
+          alert('Invalid file type for Image ' + (i + 1) + '.\nAllowed formats: JPEG, JPG, PNG, HEIF, HEIC, AVIF');
+          this.value = '';
+          return;
+      }
 
       // Clear the delete flag if user picks a new file
       document.getElementById('deleteImage' + i).value = '0';
