@@ -175,7 +175,7 @@ export const updateUser = async (req, res) => {
     const { firstName, lastName, email, role, isPremium, status } = req.body;
     const userId = req.params.id;
 
-    // helper: re-render with edit modal open and inline errors
+   
     const rerenderEdit = async (fieldErrors) => {
         const limit = 10;
         const query = {};
@@ -229,11 +229,21 @@ export const updateUser = async (req, res) => {
         user.lastName  = lastName;
         if (email !== user.email) user.email = email;
         user.isPremium = isPremium === 'true';
+        
+        if (!user.isPremium) {
+                user.isPremium = false;
+                user.premiumPlan = null;        
+                user.premiumExpiresAt = null;   
+            } else {
+                user.isPremium = true;
+                
+            }
         user.role      = role === 'admin' ? 'admin' : 'user';
         user.isActive  = status !== 'blocked';
         user.isBlocked = !user.isActive;
 
         await user.save();
+
         res.redirect('/admin/users');
     } catch (err) {
         console.error('Update user error:', err.message);

@@ -188,128 +188,198 @@ If this sounds like you — Premium was designed for you.
 
 <!-- PRICING -->
 
+<style>
+  .plan-card { transition: transform .2s, box-shadow .2s; }
+  .plan-card:hover { transform: translateY(-4px); box-shadow: 0 8px 32px rgba(0,0,0,.5); }
+  .plan-starter  { border: 2px solid #28a745 !important; }
+  .plan-advanced { border: 2px solid #8B4513 !important; }
+  .plan-premium  { border: 2px solid #FFD700 !important; }
+  .plan-starter  .plan-title { color: #28a745; }
+  .plan-advanced .plan-title { color: #CD853F; }
+  .plan-premium  .plan-title { color: #FFD700; }
+  .plan-starter  .plan-icon { color: #28a745; }
+  .plan-advanced .plan-icon { color: #CD853F; }
+  .plan-premium  .plan-icon { color: #FFD700; }
+  .check-starter  { color: #28a745; }
+  .check-advanced { color: #CD853F; }
+  .check-premium  { color: #FFD700; }
+  .btn-starter  { background: #28a745; border: none; color: #fff; font-weight: 700; }
+  .btn-starter:hover  { background: #218838; color: #fff; }
+  .btn-advanced { background: #8B4513; border: none; color: #fff; font-weight: 700; }
+  .btn-advanced:hover { background: #6b3410; color: #fff; }
+  .btn-premium  { background: #FFD700; border: none; color: #000; font-weight: 700; }
+  .btn-premium:hover  { background: #e6c200; color: #000; }
+  .plan-duration { font-size: .8rem; letter-spacing: 1px; text-transform: uppercase; }
+</style>
+
 <section id="pricing" class="container py-5 mb-5">
 
-<div class="text-center mb-5">
+  <div class="text-center mb-5">
+    <h2 class="fw-bold text-uppercase">
+      CHOOSE YOUR <span class="text-warning">PLAN</span>
+    </h2>
+    <p class="text-white-50">Invest in curiosity. Cancel anytime.</p>
+  </div>
 
-<h2 class="fw-bold text-uppercase">
-CHOOSE YOUR <span class="text-warning">PLAN</span>
-</h2>
+  <div class="row justify-content-center g-4">
 
-<p class="text-white-50">
-Invest in curiosity.
-</p>
+    <!-- STARTER -->
+    <div class="col-md-6 col-lg-4">
+      <div class="p-5 plan-card plan-starter text-center h-100" style="background:#111;">
+        <i class="fas fa-seedling fa-2x plan-icon mb-3"></i>
+        <h4 class="fw-bold plan-title">STARTER</h4>
+        <p class="text-white-50 plan-duration mb-1">1 Month Access</p>
+        <h2 class="fw-bold text-white my-3">$10</h2>
+        <ul class="list-unstyled text-white-50 small mb-4 text-start">
+          <li class="mb-2"><i class="fas fa-check me-2 check-starter"></i>Be Skeptic Library</li>
+          <li class="mb-2"><i class="fas fa-check me-2 check-starter"></i>Standard Support</li>
+          <li class="mb-2"><i class="fas fa-check me-2 check-starter"></i>Community Access</li>
+          <li class="mb-2"><i class="fas fa-check me-2 check-starter"></i>Premium Badge (30 days)</li>
+        </ul>
+        <% if (locals.isLoggedIn) { %>
+          <button class="btn btn-starter w-100 rounded-0 py-2 upgrade-btn"
+            data-plan="starter" data-amount="1000" data-label="Starter — $10 / 1 Month">
+            <i class="fas fa-arrow-up me-2"></i>CHOOSE STARTER
+          </button>
+        <% } else { %>
+          <a href="/login?redirect=/premium" class="btn btn-starter w-100 rounded-0 py-2">
+            <i class="fas fa-sign-in-alt me-2"></i>LOGIN TO UPGRADE
+          </a>
+        <% } %>
+      </div>
+    </div>
 
-</div>
+    <!-- PREMIUM+ (centre / best value) -->
+    <div class="col-md-6 col-lg-4">
+      <div class="p-5 plan-card plan-premium text-center h-100 position-relative" style="background:#111;">
+        <span class="badge text-dark mb-3 px-3 py-2" style="background:#FFD700; font-size:.75rem; letter-spacing:1px;">BEST VALUE</span>
+        <i class="fas fa-crown fa-2x plan-icon mb-3 d-block"></i>
+        <h4 class="fw-bold plan-title">PREMIUM+</h4>
+        <p class="text-white-50 plan-duration mb-1">12 Month Access</p>
+        <h2 class="fw-bold text-white my-3">$100</h2>
+        <ul class="list-unstyled text-white-50 small mb-4 text-start">
+          <li class="mb-2"><i class="fas fa-check me-2 check-premium"></i>All Starter Features</li>
+          <li class="mb-2"><i class="fas fa-check me-2 check-premium"></i>Exclusive Collectibles</li>
+          <li class="mb-2"><i class="fas fa-check me-2 check-premium"></i>Early Access to Drops</li>
+          <li class="mb-2"><i class="fas fa-check me-2 check-premium"></i>Priority Support</li>
+          <li class="mb-2"><i class="fas fa-check me-2 check-premium"></i>Gold Premium Badge</li>
+        </ul>
+        <% if (locals.isLoggedIn) { %>
+          <button class="btn btn-premium w-100 rounded-0 py-2 upgrade-btn"
+            data-plan="premium_plus" data-amount="10000" data-label="Premium+ — $100 / 1 Year">
+            <i class="fas fa-crown me-2"></i>UPGRADE TO PREMIUM+
+          </button>
+        <% } else { %>
+          <a href="/login?redirect=/premium" class="btn btn-premium w-100 rounded-0 py-2">
+            <i class="fas fa-sign-in-alt me-2"></i>LOGIN TO UPGRADE
+          </a>
+        <% } %>
+      </div>
+    </div>
 
+    <!-- ADVANCED -->
+    <div class="col-md-6 col-lg-4">
+      <div class="p-5 plan-card plan-advanced text-center h-100" style="background:#111;">
+        <i class="fas fa-rocket fa-2x plan-icon mb-3"></i>
+        <h4 class="fw-bold plan-title">ADVANCED</h4>
+        <p class="text-white-50 plan-duration mb-1">6 Month Access</p>
+        <h2 class="fw-bold text-white my-3">$50</h2>
+        <ul class="list-unstyled text-white-50 small mb-4 text-start">
+          <li class="mb-2"><i class="fas fa-check me-2 check-advanced"></i>All Starter Features</li>
+          <li class="mb-2"><i class="fas fa-check me-2 check-advanced"></i>Early Access to Drops</li>
+          <li class="mb-2"><i class="fas fa-check me-2 check-advanced"></i>Priority Support</li>
+          <li class="mb-2"><i class="fas fa-check me-2 check-advanced"></i>Brown Premium Badge (6 months)</li>
+        </ul>
+        <% if (locals.isLoggedIn) { %>
+          <button class="btn btn-advanced w-100 rounded-0 py-2 upgrade-btn"
+            data-plan="advanced" data-amount="5000" data-label="Advanced — $50 / 6 Months">
+            <i class="fas fa-arrow-up me-2"></i>CHOOSE ADVANCED
+          </button>
+        <% } else { %>
+          <a href="/login?redirect=/premium" class="btn btn-advanced w-100 rounded-0 py-2">
+            <i class="fas fa-sign-in-alt me-2"></i>LOGIN TO UPGRADE
+          </a>
+        <% } %>
+      </div>
+    </div>
 
-<div class="row justify-content-center g-4">
-
-
-<!-- STARTER -->
-
-<div class="col-md-6 col-lg-4">
-
-<div class="p-5 border border-secondary text-center h-100">
-
-<h4 class="text-secondary">STARTER</h4>
-
-<h2 class="fw-bold">$10</h2>
-
-<p class="text-white-50">/ month</p>
-
-<ul class="list-unstyled text-white-50 small mb-4">
-
-<li>Be Skeptic Library</li>
-<li>Standard Support</li>
-<li>Community Access</li>
-
-</ul>
-
-<a href="/login" class="btn btn-outline-light w-100 rounded-0">
-CHOOSE PLAN
-</a>
-
-</div>
-</div>
-
-
-
-<!-- PREMIUM -->
-
-<div class="col-md-6 col-lg-4">
-
-<div class="p-5 border border-warning text-center h-100">
-
-<span class="badge bg-warning text-dark mb-3">BEST VALUE</span>
-
-<h4 class="text-warning">PREMIUM+</h4>
-
-<h2 class="fw-bold">$100</h2>
-
-<p class="text-white-50">/ year</p>
-
-<ul class="list-unstyled text-white-50 small mb-4">
-
-<li>All Starter Features</li>
-<li>Exclusive Collectibles</li>
-<li>Early Access</li>
-<li>Priority Support</li>
-<li>Premium Badge</li>
-
-</ul>
-
-<a href="/login" class="btn btn-warning w-100 rounded-0 fw-bold">
-UPGRADE
-</a>
-
-</div>
-</div>
-
-
-
-<!-- ADVANCED -->
-
-<div class="col-md-6 col-lg-4">
-
-<div class="p-5 border border-secondary text-center h-100">
-
-<h4 class="text-secondary">ADVANCED</h4>
-
-<h2 class="fw-bold">$50</h2>
-
-<p class="text-white-50">/ 6 months</p>
-
-<ul class="list-unstyled text-white-50 small mb-4">
-
-<li>All Starter Features</li>
-<li>Early Access</li>
-<li>Priority Support</li>
-
-</ul>
-
-<a href="/login" class="btn btn-outline-light w-100 rounded-0">
-CHOOSE PLAN
-</a>
-
-</div>
-</div>
-
-</div>
-
-
-<div class="text-center mt-5">
-
-<p class="text-white-50">
-Already Premium?
-<a href="/login" class="text-warning fw-bold text-decoration-none">
-Enter Premium Portal →
-</a>
-</p>
-
-</div>
-
+  </div>
 </section>
+
+<!-- Razorpay checkout script — only loads when user is logged in -->
+<% if (locals.isLoggedIn) { %>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+  document.querySelectorAll('.upgrade-btn').forEach(btn => {
+    btn.addEventListener('click', async function () {
+      const plan   = this.dataset.plan;
+      const amount = parseInt(this.dataset.amount, 10); // in paise (cents)
+      const label  = this.dataset.label;
+
+      this.disabled = true;
+      this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Loading…';
+
+      try {
+        const res  = await fetch('/premium/create-order', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ plan, amount }),
+        });
+        const data = await res.json();
+        if (!data.id) throw new Error(data.error || 'Could not create payment order');
+
+        const options = {
+          key:         data.key,
+          amount:      data.amount,
+          currency:    data.currency || 'USD',
+          name:        'Comizon',
+          description: label,
+          order_id:    data.id,
+          handler: async function (response) {
+            const vRes  = await fetch('/premium/verify', {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body:    JSON.stringify({
+                razorpay_order_id:   response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature:  response.razorpay_signature,
+                plan,
+              }),
+            });
+            const vData = await vRes.json();
+            if (vData.success) {
+              window.location.href = '/premium/success?plan=' + plan;
+            } else {
+              window.location.href = '/premium/failed?reason=' + encodeURIComponent(vData.error || 'Verification failed');
+            }
+          },
+          modal: {
+            ondismiss: () => {
+              btn.disabled = false;
+              btn.innerHTML = btn.dataset.originalLabel || 'CHOOSE PLAN';
+            }
+          },
+          theme: { color: plan === 'starter' ? '#28a745' : plan === 'advanced' ? '#8B4513' : '#FFD700' },
+        };
+
+        // Store original label before replacing
+        btn.dataset.originalLabel = btn.textContent.trim();
+
+        const rzp = new Razorpay(options);
+        rzp.on('payment.failed', function (resp) {
+          window.location.href = '/premium/failed?reason=' + encodeURIComponent(resp.error.description);
+        });
+        rzp.open();
+
+      } catch (err) {
+        alert('Error: ' + err.message);
+        btn.disabled = false;
+        btn.innerHTML = btn.dataset.originalLabel || 'CHOOSE PLAN';
+      }
+    });
+  });
+</script>
+<% } %>
 
 
 

@@ -1,0 +1,61 @@
+<%- include('../partials/user-head', { title: 'Premium Upgrade Failed' }) %>
+
+<body class="bg-black text-light">
+  <%- include('../partials/header') %>
+
+  <style>
+    .pfail-wrap { margin-top:90px; min-height:80vh; display:flex; align-items:center; padding:3rem 0; }
+    .pfail-card { background:#1A1A1A; border:1px solid #333; border-top:4px solid #E63946; max-width:600px; margin:0 auto; padding:3rem 2.5rem; text-align:center; }
+    .pfail-icon { width:90px; height:90px; border-radius:50%; background:rgba(230,57,70,.12); border:3px solid #E63946; display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem; }
+    .reason-box { background:#111; border:1px solid #333; border-left:3px solid #E63946; padding:.75rem 1rem; text-align:left; font-size:.82rem; color:#aaa; margin-bottom:1.8rem; }
+    .btn-retry  { background:#E63946; border:none; color:#fff; padding:.75rem 2rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; font-size:.9rem; transition:opacity .2s; }
+    .btn-retry:hover { opacity:.85; color:#fff; }
+    .btn-home   { background:transparent; border:2px solid #555; color:#aaa; padding:.7rem 1.5rem; font-weight:600; font-size:.85rem; transition:border-color .2s,color .2s; }
+    .btn-home:hover { border-color:#E63946; color:#fff; }
+  </style>
+
+  <div class="container pfail-wrap">
+    <div class="w-100">
+      <div class="pfail-card">
+
+        <!-- Icon -->
+        <div class="pfail-icon">
+          <i class="fas fa-times fa-2x text-danger"></i>
+        </div>
+
+        <!-- Heading -->
+        <h2 class="fw-bold mb-1">Upgrade Failed</h2>
+        <p class="text-white-50 mb-3">
+          We couldn't activate your <strong class="text-warning">Premium</strong> membership.
+          No charge has been made to your account.
+        </p>
+
+        <!-- Reason -->
+        <div class="reason-box">
+          <i class="fas fa-info-circle me-2 text-danger"></i>
+          <strong class="text-white">Reason:</strong> <%= reason %>
+        </div>
+
+        <!-- Actions -->
+        <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center mb-4">
+          <a href="/premium#pricing" class="btn btn-retry">
+            <i class="fas fa-redo me-2"></i>Try Again
+          </a>
+          <a href="/" class="btn btn-home">
+            <i class="fas fa-home me-2"></i>Go Home
+          </a>
+        </div>
+
+        <p class="text-white-50 mb-0" style="font-size:.75rem;">
+          <i class="fas fa-shield-alt me-1 text-success"></i>
+          No amount has been deducted. If you were charged, it will be refunded within 5–7 business days.
+          Contact support if the issue persists.
+        </p>
+
+      </div>
+    </div>
+  </div>
+
+  <%- include('../partials/footer') %>
+</body>
+</html>
