@@ -1,0 +1,195 @@
+<%- include('../../partials/user-head', { title: 'My Orders' }) %>
+
+<body class="bg-black text-light">
+  <%- include('../../partials/header') %>
+
+  <style>
+    .orders-wrap { margin-top:90px; padding:2rem 0 4rem; }
+    .order-card { background:#1A1A1A; border:1px solid #333; margin-bottom:1rem; transition:border-color .2s; }
+    .order-card:hover { border-color:#555; }
+    .order-header { padding:1rem 1.2rem; border-bottom:1px solid #2a2a2a; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem; }
+    .order-id { font-family:monospace; font-size:.85rem; color:#FFD700; font-weight:700; letter-spacing:1px; }
+    .order-body { padding:1rem 1.2rem; }
+    .product-thumb { width:55px; height:75px; object-fit:cover; flex-shrink:0; }
+    .product-thumb-ph { width:55px; height:75px; background:#2a2a2a; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .item-status-dot { width:8px; height:8px; border-radius:50%; display:inline-block; flex-shrink:0; }
+    .search-input:focus { background:#000!important; color:#fff!important; border-color:#E63946!important; box-shadow:none!important; }
+
+    /* Status badges */
+    .badge-pending       { background:rgba(255,193,7,.15);  color:#FFD700; border:1px solid rgba(255,193,7,.3); }
+    .badge-processing    { background:rgba(23,162,184,.15); color:#17a2b8; border:1px solid rgba(23,162,184,.3); }
+    .badge-shipped       { background:rgba(13,110,253,.15); color:#6ea8fe; border:1px solid rgba(13,110,253,.3); }
+    .badge-out_for_delivery { background:rgba(111,66,193,.15); color:#a98eda; border:1px solid rgba(111,66,193,.3); }
+    .badge-delivered     { background:rgba(40,167,69,.15);  color:#75b798; border:1px solid rgba(40,167,69,.3); }
+    .badge-cancelled     { background:rgba(220,53,69,.15);  color:#ea868f; border:1px solid rgba(220,53,69,.3); }
+    .badge-return_requested { background:rgba(253,126,20,.15); color:#fd9843; border:1px solid rgba(253,126,20,.3); }
+
+    .status-pill { display:inline-block; padding:.2rem .7rem; font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; border-radius:2px; }
+  </style>
+
+  <div class="container orders-wrap">
+    <div class="row g-4">
+
+      <!-- Sidebar -->
+      <div class="col-lg-3">
+        <%- include('../../partials/profile-sidebar', { activePage: 'orders', user: locals.user }) %>
+      </div>
+
+      <!-- Main -->
+      <div class="col-lg-9">
+
+        <% if (locals.error) { %>
+          <div class="alert alert-danger alert-dismissible rounded-0 fade show border-0 border-start border-4 border-danger mb-3">
+            <i class="fas fa-exclamation-circle me-2"></i><%= error %>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+          </div>
+        <% } %>
+        <% if (locals.success) { %>
+          <div class="alert alert-success alert-dismissible rounded-0 fade show border-0 border-start border-4 border-success mb-3">
+            <i class="fas fa-check-circle me-2"></i><%= success %>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+          </div>
+        <% } %>
+
+        <!-- Header + Search -->
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+          <div>
+            <h4 class="fw-bold mb-0 border-start border-3 border-danger ps-3">My Orders</h4>
+            <p class="text-white-50 small mb-0 ps-3"><%= totalOrders %> order<%= totalOrders !== 1 ? 's' : '' %> found</p>
+          </div>
+        </div>
+
+        <form method="GET" action="/orders" class="mb-4">
+          <div class="input-group mb-2">
+            <span class="input-group-text bg-dark border-secondary text-white-50"><i class="fas fa-search"></i></span>
+            <input type="text" name="search" class="form-control bg-dark text-light border-secondary search-input rounded-0"
+                   placeholder="Search by Order ID or product name…" value="<%= locals.search || '' %>">
+            <% if (locals.filter) { %>
+              <input type="hidden" name="filter" value="<%= locals.filter %>">
+            <% } %>
+            <button type="submit" class="btn btn-danger rounded-0 px-4 fw-bold">Search</button>
+            <% if (locals.search || locals.filter) { %>
+              <a href="/orders" class="btn btn-outline-secondary rounded-0"><i class="fas fa-times"></i></a>
+            <% } %>
+          </div>
+          <div class="d-flex gap-2">
+            <a href="/orders?search=<%= locals.search || '' %>"
+               class="btn btn-sm rounded-0 fw-bold <%= !locals.filter ? 'btn-danger' : 'btn-outline-secondary' %>">
+              All
+            </a>
+            <a href="/orders?filter=ordered&search=<%= locals.search || '' %>"
+               class="btn btn-sm rounded-0 fw-bold <%= locals.filter === 'ordered' ? 'btn-warning text-dark' : 'btn-outline-secondary' %>">
+              <i class="fas fa-box me-1"></i>Ordered
+            </a>
+            <a href="/orders?filter=delivered&search=<%= locals.search || '' %>"
+               class="btn btn-sm rounded-0 fw-bold <%= locals.filter === 'delivered' ? 'btn-success' : 'btn-outline-secondary' %>">
+              <i class="fas fa-check-circle me-1"></i>Delivered
+            </a>
+          </div>
+        </form>
+
+        <!-- Orders list -->
+        <% if (!orders || orders.length === 0) { %>
+          <div class="text-center py-5">
+            <div style="font-size:4rem;color:#333;"><i class="fas fa-shopping-bag"></i></div>
+            <h5 class="text-white-50 mt-3">No orders yet</h5>
+            <p class="text-white-50 small">You haven't placed any orders. Start shopping!</p>
+            <a href="/" class="btn btn-danger rounded-0 fw-bold px-4 mt-2">
+              <i class="fas fa-book-open me-2"></i>Browse Comics
+            </a>
+          </div>
+        <% } else { %>
+
+          <% orders.forEach(order => {
+               const overallStatus = order.status || 'pending';
+          %>
+            <div class="order-card">
+              <div class="order-header">
+                <div>
+                  <span class="order-id">#<%= order.orderId %></span>
+                  <span class="text-white-50 small ms-3">
+                    <%= new Date(order.orderedAt).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}) %>
+                  </span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="status-pill badge-<%= overallStatus %>">
+                    <%= overallStatus.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) %>
+                  </span>
+                  <span class="text-danger fw-bold">$<%= order.total.toFixed(2) %></span>
+                </div>
+              </div>
+
+              <div class="order-body">
+                <!-- Items preview (max 3 shown) -->
+                <div class="d-flex flex-wrap gap-3 mb-3">
+                  <% order.items.slice(0, 3).forEach(item => { %>
+                    <div class="d-flex align-items-center gap-2" style="min-width:180px;">
+                      <% if (item.image) { %>
+                        <img src="<%= item.image %>" alt="" class="product-thumb">
+                      <% } else { %>
+                        <div class="product-thumb-ph"><i class="fas fa-book text-white-50 fa-sm"></i></div>
+                      <% } %>
+                      <div>
+                        <div class="small fw-semibold" style="max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                          <%= item.productName %>
+                        </div>
+                        <div class="text-white-50" style="font-size:.72rem;">Qty: <%= item.quantity %> · $<%= item.lineTotal.toFixed(2) %></div>
+                        <span class="status-pill badge-<%= item.itemStatus || 'pending' %>" style="font-size:.65rem;padding:.15rem .5rem;">
+                          <%= (item.itemStatus || 'pending').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) %>
+                        </span>
+                      </div>
+                    </div>
+                  <% }) %>
+                  <% if (order.items.length > 3) { %>
+                    <div class="d-flex align-items-center text-white-50 small">
+                      +<%= order.items.length - 3 %> more item<%= order.items.length - 3 > 1 ? 's' : '' %>
+                    </div>
+                  <% } %>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                  <span class="text-white-50 small">
+                    <i class="fas fa-<%= order.paymentMethod === 'cod' ? 'money-bill-wave' : 'credit-card' %> me-1"></i>
+                    <%= order.paymentMethod?.toUpperCase() || 'COD' %>
+                    &nbsp;·&nbsp;
+                    <i class="fas fa-box me-1"></i><%= order.items.length %> product<%= order.items.length !== 1 ? 's' : '' %>
+                  </span>
+                  <a href="/orders/<%= order._id %>" class="btn btn-outline-warning btn-sm rounded-0 fw-bold px-3">
+                    <i class="fas fa-eye me-1"></i>View Details
+                  </a>
+                </div>
+              </div>
+            </div>
+          <% }) %>
+
+          <!-- Pagination -->
+          <% if (totalPages > 1) { %>
+            <nav class="mt-4">
+              <ul class="pagination justify-content-center mb-0">
+                <li class="page-item <%= currentPage===1?'disabled':'' %>">
+                  <a class="page-link bg-dark text-light border-secondary rounded-0"
+                     href="?page=<%= currentPage-1 %>&search=<%= search %>">&laquo;</a>
+                </li>
+                <% for(let p=1;p<=totalPages;p++){ %>
+                  <li class="page-item <%= p===currentPage?'active':'' %>">
+                    <a class="page-link <%= p===currentPage?'bg-danger border-danger text-white':'bg-dark text-light border-secondary' %> rounded-0"
+                       href="?page=<%= p %>&search=<%= search %>"><%= p %></a>
+                  </li>
+                <% } %>
+                <li class="page-item <%= currentPage===totalPages?'disabled':'' %>">
+                  <a class="page-link bg-dark text-light border-secondary rounded-0"
+                     href="?page=<%= currentPage+1 %>&search=<%= search %>">&raquo;</a>
+                </li>
+              </ul>
+            </nav>
+          <% } %>
+
+        <% } %>
+
+      </div><!-- /col -->
+    </div><!-- /row -->
+  </div><!-- /container -->
+
+  <%- include('../../partials/footer') %>
+</body>
+</html>

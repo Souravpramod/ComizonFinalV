@@ -1,0 +1,578 @@
+<%- include('../partials/user-head', { title: 'Checkout' }) %>
+
+<body class="bg-black text-light">
+  <%- include('../partials/header') %>
+
+  <style>
+    .checkout-wrap { margin-top: 90px; padding: 2rem 0 4rem; }
+    .section-box { background:#1A1A1A; border:1px solid #333; padding:1.5rem; margin-bottom:1.5rem; }
+    .section-title { font-size:.75rem; text-transform:uppercase; letter-spacing:1.5px; color:#E63946; font-weight:700; margin-bottom:1.2rem; border-left:3px solid #E63946; padding-left:.6rem; }
+    .address-card { border:2px solid #333; background:#111; padding:1rem; border-radius:0; cursor:pointer; transition:border-color .2s; }
+    .address-card.selected, .address-card:hover { border-color:#E63946; }
+    .address-card input[type=radio] { accent-color:#E63946; }
+    .addr-badge { font-size:.65rem; background:#E63946; color:#fff; padding:2px 6px; text-transform:uppercase; font-weight:700; }
+    .summary-sticky { position:sticky; top:100px; }
+    .coupon-card { border:1px dashed #444; background:#111; padding:.9rem 1rem; cursor:pointer; transition:border-color .2s; }
+    .coupon-card:hover { border-color:#E63946; }
+    .coupon-card.not-applicable { opacity:.5; cursor:default; }
+    .coupon-card.applied { border-color:#28a745; border-style:solid; }
+    .coupon-badge { font-size:.7rem; background:#222; border:1px solid #555; color:#FFD700; padding:3px 8px; font-family:monospace; font-weight:700; letter-spacing:1px; }
+    .order-item-row { border-bottom:1px solid #2a2a2a; padding:.6rem 0; }
+    .order-item-row:last-child { border-bottom:none; }
+    .payment-opt { border:2px solid #333; background:#111; padding:.9rem 1.2rem; cursor:pointer; transition:border-color .2s; }
+    .payment-opt.selected, .payment-opt:hover { border-color:#E63946; }
+    .payment-opt input[type=radio] { accent-color:#E63946; }
+    #place-order-loading { display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:9999; align-items:center; justify-content:center; flex-direction:column; gap:1rem; }
+    #place-order-loading.show { display:flex; }
+    .pay-tab { background:#111; border:2px solid #333; color:#fff; padding:.4rem 1rem; font-size:.8rem; font-weight:600; transition:all .2s; cursor:pointer; }
+    .pay-tab.active { border-color:#E63946; color:#E63946; }
+    .pay-tab:hover { border-color:#E63946; }
+    .eligibility-badge { font-size:.6rem; padding:2px 5px; border-radius:2px; font-weight:700; text-transform:uppercase; }
+
+    /* ── Wallet option specific ── */
+    .wallet-balance-chip {
+      font-size:.72rem; background:rgba(40,167,69,.12);
+      border:1px solid rgba(40,167,69,.3); color:#28a745;
+      padding:2px 8px; font-weight:700;
+    }
+    .wallet-insufficient {
+      font-size:.72rem; background:rgba(230,57,70,.1);
+      border:1px solid rgba(230,57,70,.3); color:#E63946;
+      padding:2px 8px; font-weight:700;
+    }
+  </style>
+
+  <div id="place-order-loading">
+    <div class="spinner-border text-danger" style="width:3rem;height:3rem;"></div>
+    <p class="text-white fw-bold">Placing your order…</p>
+  </div>
+
+  <div class="container checkout-wrap">
+
+    <% if (locals.error) { %>
+      <div class="alert alert-danger alert-dismissible rounded-0 fade show border-0 border-start border-4 border-danger mb-4">
+        <i class="fas fa-exclamation-circle me-2"></i><%= error %>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+      </div>
+    <% } %>
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <a href="/cart" class="text-white-50 text-decoration-none small">
+        <i class="fas fa-arrow-left me-1"></i>Back to Cart
+      </a>
+      <h2 class="mb-0 fw-bold text-uppercase border-start border-3 border-danger ps-3">Checkout</h2>
+    </div>
+
+    <form action="/checkout/place-order" method="POST" id="checkoutForm">
+      <!-- hidden fields populated by JS when coupon is applied -->
+      <input type="hidden" name="couponCode"  id="appliedCouponCode"  value="">
+      <input type="hidden" name="discountAmt" id="appliedDiscountAmt" value="0">
+
+      <div class="row g-4">
+
+        <!-- LEFT COLUMN -->
+        <div class="col-lg-7">
+
+          <!-- ① DELIVERY ADDRESS -->
+          <div class="section-box">
+            <div class="section-title"><i class="fas fa-map-marker-alt me-2"></i>Delivery Address</div>
+
+            <% if (!addresses || addresses.length === 0) { %>
+              <p class="text-white-50 small mb-3">No saved addresses. Add one below.</p>
+            <% } %>
+
+            <div class="row g-2 mb-3">
+              <% (addresses || []).forEach((addr, idx) => { %>
+                <div class="col-md-6">
+                  <label class="address-card d-block w-100 <%= (defaultAddress && defaultAddress._id.toString() === addr._id.toString()) ? 'selected' : '' %>">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                      <div class="d-flex align-items-center gap-2">
+                        <input type="radio" name="addressId" value="<%= addr._id %>"
+                          <%= (defaultAddress && defaultAddress._id.toString() === addr._id.toString()) ? 'checked' : '' %>
+                          onchange="document.querySelectorAll('.address-card').forEach(c=>c.classList.remove('selected'));this.closest('.address-card').classList.add('selected')">
+                        <span class="addr-badge"><%= addr.type || 'home' %></span>
+                      </div>
+                      <% if (addr.isDefault) { %>
+                        <span class="text-warning small"><i class="fas fa-star me-1"></i>Default</span>
+                      <% } %>
+                    </div>
+                    <p class="mb-0 small fw-semibold"><%= addr.addressLane1 %></p>
+                    <% if (addr.addressLane2) { %><p class="mb-0 small text-white-50"><%= addr.addressLane2 %></p><% } %>
+                    <p class="mb-0 small text-white-50"><%= addr.city %><% if (addr.state) { %>, <%= addr.state %><% } %></p>
+                    <p class="mb-0 small text-white-50"><%= addr.pincode %> <%= addr.country %></p>
+                  </label>
+                </div>
+              <% }) %>
+            </div>
+
+            <a href="/profile/address" class="btn btn-outline-secondary btn-sm rounded-0" target="_blank">
+              <i class="fas fa-plus me-1"></i>Add / Edit Addresses
+            </a>
+          </div>
+
+          <!-- ② COUPONS -->
+          <div class="section-box">
+            <div class="section-title"><i class="fas fa-tag me-2"></i>Coupons &amp; Offers</div>
+
+            <!-- Manual entry -->
+            <div class="input-group mb-2">
+              <input type="text" id="couponInput"
+                     class="form-control bg-black border-secondary text-white rounded-0"
+                     placeholder="Enter coupon code"
+                     style="text-transform:uppercase;">
+              <button type="button" class="btn btn-outline-danger rounded-0 px-4 fw-bold"
+                      id="couponApplyBtn" onclick="handleCouponApply()">APPLY</button>
+            </div>
+            <div id="couponMsg" class="small mb-3"></div>
+
+            <!-- Available coupons -->
+            <% if (availableCoupons && availableCoupons.length > 0) { %>
+              <p class="text-white-50 small mb-2">Available for you:</p>
+              <div class="row g-2">
+                <% availableCoupons.forEach(c => { %>
+                  <div class="col-md-6">
+                    <div class="coupon-card <%= c.applicable ? '' : 'not-applicable' %>"
+                         id="ccard-<%= c.code %>"
+                         onclick="<%= c.applicable ? `tapCoupon('${c.code}')` : '' %>">
+                      <div class="d-flex justify-content-between align-items-start mb-1">
+                        <span class="coupon-badge"><%= c.code %></span>
+                        <span class="text-danger fw-bold small"><%= c.discountLabel %></span>
+                      </div>
+                      <p class="mb-1 text-white-50" style="font-size:.72rem;"><%= c.description %></p>
+                      <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-white-50" style="font-size:.7rem;">
+                          Min. $<%= c.minOrderAmount %>
+                        </span>
+                        <% if (!c.applicable) { %>
+                          <span class="text-warning" style="font-size:.65rem;">
+                            <i class="fas fa-info-circle me-1"></i>Add $<%= (c.minOrderAmount - subtotal).toFixed(2) %> more
+                          </span>
+                        <% } else if (c.eligibility === 'new_user') { %>
+                          <span class="eligibility-badge bg-info text-dark">New User</span>
+                        <% } else if (c.eligibility === 'loyal') { %>
+                          <span class="eligibility-badge bg-warning text-dark">Loyal Customer</span>
+                        <% } else if (c.eligibility === 'bank') { %>
+                          <span class="eligibility-badge bg-primary text-white">Bank Offer</span>
+                        <% } %>
+                      </div>
+                      <% if (c.applicable && c.saving > 0) { %>
+                        <p class="mb-0 text-success mt-1" style="font-size:.7rem;">
+                          <i class="fas fa-check-circle me-1"></i>You save $<%= c.saving.toFixed(2) %>
+                        </p>
+                      <% } %>
+                    </div>
+                  </div>
+                <% }) %>
+              </div>
+            <% } else { %>
+              <p class="text-white-50 small">No coupons available right now.</p>
+            <% } %>
+          </div>
+
+          <!-- ③ PAYMENT METHOD -->
+          <div class="section-box">
+            <div class="section-title"><i class="fas fa-credit-card me-2"></i>Payment Method</div>
+
+            <div class="d-flex flex-column gap-2 mb-3">
+              <input type="hidden" name="paymentMethod" value="online" id="payMethodInput">
+
+              <!-- Online (Razorpay) -->
+              <label class="payment-opt d-block selected" id="opt-online" onclick="selectMethod('online')">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <i class="fas fa-credit-card me-2 text-danger"></i>
+                    <span class="fw-bold">Online Payment</span>
+                    <div class="text-white-50" style="font-size:.72rem;">Card, UPI, Netbanking</div>
+                  </div>
+                  <i class="fas fa-chevron-right text-white-50"></i>
+                </div>
+              </label>
+
+              <!-- Comizon Pay (Wallet) -->
+              <label class="payment-opt d-block" id="opt-wallet" onclick="selectMethod('wallet')">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div class="flex-grow-1">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                      <i class="fas fa-wallet me-1 text-danger"></i>
+                      <span class="fw-bold">Comizon Pay</span>
+                      <!-- Balance chip — green if sufficient, red if not -->
+                      <span id="walletChip"
+                            class="<%= (walletBalance !== undefined && walletBalance >= total) ? 'wallet-balance-chip' : 'wallet-insufficient' %>">
+                        $<%= (walletBalance !== undefined ? walletBalance : 0).toFixed(2) %> available
+                      </span>
+                    </div>
+                    <div class="text-white-50 mt-1" style="font-size:.72rem;">
+                      Instant deduction from your wallet. No OTP needed.
+                    </div>
+                    <!-- Insufficient funds warning -->
+                    <% if (walletBalance !== undefined && walletBalance < total) { %>
+                      <div class="mt-1" style="font-size:.7rem; color:#E63946;">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        Need $<%= (total - walletBalance).toFixed(2) %> more.
+                        <a href="/wallet" class="text-danger fw-bold text-decoration-underline">Add money →</a>
+                      </div>
+                    <% } %>
+                  </div>
+                  <i class="fas fa-chevron-right text-white-50 ms-2"></i>
+                </div>
+              </label>
+
+              <!-- COD -->
+              <label class="payment-opt d-block" id="opt-cod" onclick="selectMethod('cod')">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <i class="fas fa-truck me-2 text-danger"></i>
+                    <span class="fw-bold">Cash on Delivery</span>
+                    <div class="text-white-50" style="font-size:.72rem;">Pay when your order arrives</div>
+                  </div>
+                  <i class="fas fa-chevron-right text-white-50"></i>
+                </div>
+              </label>
+            </div>
+
+            <p class="text-white-50 mt-2 mb-0" style="font-size:.72rem;">
+              <i class="fas fa-lock me-1 text-success"></i>Secured by Razorpay
+            </p>
+          </div>
+
+        </div><!-- /col-lg-7 -->
+
+        <!-- RIGHT COLUMN — order summary -->
+        <div class="col-lg-5">
+          <div class="summary-sticky">
+            <div class="section-box">
+              <div class="section-title"><i class="fas fa-shopping-bag me-2"></i>Order Summary</div>
+
+              <div class="mb-3">
+                <% cartItems.forEach(item => { %>
+                  <div class="order-item-row d-flex align-items-center gap-3">
+                    <% if (item.image) { %>
+                      <img src="<%= item.image %>" alt="" style="width:50px;height:70px;object-fit:cover;flex-shrink:0;">
+                    <% } else { %>
+                      <div style="width:50px;height:70px;background:#2a2a2a;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="fas fa-book text-white-50"></i>
+                      </div>
+                    <% } %>
+                    <div class="flex-grow-1">
+                      <div class="small fw-semibold"><%= item.name %></div>
+                      <div class="text-white-50" style="font-size:.75rem;">Qty: <%= item.quantity %> × $<%= item.price.toFixed(2) %></div>
+                    </div>
+                    <div class="text-danger fw-bold small flex-shrink-0">$<%= item.lineTotal.toFixed(2) %></div>
+                  </div>
+                <% }) %>
+              </div>
+
+              <hr class="border-secondary">
+
+              <div class="d-flex justify-content-between text-white-50 small mb-2">
+                <span>Subtotal</span>
+                <span>$<%= subtotal.toFixed(2) %></span>
+              </div>
+              <div class="d-flex justify-content-between text-white-50 small mb-2">
+                <span>Shipping</span>
+                <% if (shippingFee === 0) { %>
+                  <span class="text-success">FREE</span>
+                <% } else { %>
+                  <span>$<%= shippingFee.toFixed(2) %></span>
+                <% } %>
+              </div>
+              <div class="d-flex justify-content-between text-white-50 small mb-2" id="discountRow" style="display:none!important;">
+                <span>Discount (<span id="appliedCodeDisplay"></span>)</span>
+                <span class="text-success">- $<span id="discountDisplay">0.00</span></span>
+              </div>
+
+              <hr class="border-secondary">
+
+              <div class="d-flex justify-content-between align-items-center mb-4">
+                <span class="fw-bold">Total</span>
+                <span class="fw-bold text-danger fs-5" id="grandTotal">$<%= total.toFixed(2) %></span>
+              </div>
+
+              <button type="submit" class="btn btn-danger w-100 py-3 fw-bold rounded-0 text-uppercase fs-6" id="placeOrderBtn">
+                <span id="btnText"><i class="fas fa-lock me-2"></i>Place Order</span>
+                <span id="btnSpinner" class="d-none">
+                  <span class="spinner-border spinner-border-sm me-2"></span>Processing…
+                </span>
+              </button>
+
+              <p class="text-white-50 text-center mt-3 mb-0" style="font-size:.75rem;">
+                <i class="fas fa-shield-alt me-1 text-success"></i>
+                Secure checkout. Cash on Delivery available.
+              </p>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /row -->
+    </form>
+  </div>
+
+  <%- include('../partials/footer') %>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <script>
+  // ── Constants from server ──────────────────────────────────────────────────
+  const BASE_SUBTOTAL    = <%= subtotal %>;
+  const BASE_SHIPPING    = <%= shippingFee %>;
+  const BASE_TOTAL       = <%= total %>;
+  const WALLET_BALANCE   = <%= (walletBalance !== undefined ? walletBalance : 0) %>;
+
+  // ── Coupon state ──────────────────────────────────────────────────────────
+  let appliedDiscount = 0;
+  let appliedCode     = '';
+
+  function tapCoupon(code) {
+    document.getElementById('couponInput').value = code;
+    handleCouponApply();
+  }
+
+  async function handleCouponApply() {
+    const input   = document.getElementById('couponInput');
+    const msgEl   = document.getElementById('couponMsg');
+    const code    = input.value.trim().toUpperCase();
+
+    if (!code) { msgEl.innerHTML = ''; return; }
+
+    if (code === appliedCode) {
+      removeCoupon();
+      return;
+    }
+
+    msgEl.innerHTML = '<span class="text-white-50"><i class="fas fa-spinner fa-spin me-1"></i>Validating…</span>';
+
+    try {
+      const cartItemsForCoupon = <%- JSON.stringify(cartItems.map(i => ({
+        productId:  i._id,
+        categoryId: i.categoryId || null,
+        quantity:   i.quantity,
+        lineTotal:  i.lineTotal,
+      }))) %>;
+
+      const res  = await fetch('/checkout/apply-coupon', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          code,
+          subtotal:             BASE_SUBTOTAL,
+          appliedOfferDiscount: window._offerDiscount || 0,
+          cartItems:            cartItemsForCoupon,
+        }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        appliedDiscount = data.discount;
+        appliedCode     = data.code;
+
+        document.getElementById('appliedCouponCode').value  = data.code;
+        document.getElementById('appliedDiscountAmt').value = data.discount;
+
+        updateTotal();
+        document.getElementById('discountRow').style.display     = 'flex';
+        document.getElementById('appliedCodeDisplay').textContent = data.code;
+        document.getElementById('discountDisplay').textContent    = data.discount.toFixed(2);
+
+        document.querySelectorAll('.coupon-card').forEach(el => el.classList.remove('applied'));
+        const card = document.getElementById('ccard-' + data.code);
+        if (card) card.classList.add('applied');
+
+        document.getElementById('couponApplyBtn').textContent = 'REMOVE';
+        document.getElementById('couponApplyBtn').classList.replace('btn-outline-danger', 'btn-outline-success');
+
+        msgEl.innerHTML = `<span class="text-success"><i class="fas fa-check-circle me-1"></i>${data.message}</span>`;
+      } else {
+        msgEl.innerHTML = `<span class="text-danger"><i class="fas fa-times-circle me-1"></i>${data.message}</span>`;
+      }
+    } catch (err) {
+      msgEl.innerHTML = '<span class="text-danger">Something went wrong. Try again.</span>';
+    }
+  }
+
+  function removeCoupon() {
+    appliedDiscount = 0;
+    appliedCode     = '';
+
+    document.getElementById('appliedCouponCode').value  = '';
+    document.getElementById('appliedDiscountAmt').value = '0';
+    document.getElementById('discountRow').style.display = 'none';
+    document.getElementById('couponInput').value = '';
+
+    document.querySelectorAll('.coupon-card').forEach(el => el.classList.remove('applied'));
+
+    const btn = document.getElementById('couponApplyBtn');
+    btn.textContent = 'APPLY';
+    btn.classList.replace('btn-outline-success', 'btn-outline-danger');
+
+    document.getElementById('couponMsg').innerHTML = '';
+    updateTotal();
+  }
+
+  function updateTotal() {
+    const newTotal = Math.max(0, BASE_SUBTOTAL + BASE_SHIPPING - appliedDiscount);
+    document.getElementById('grandTotal').textContent = '$' + newTotal.toFixed(2);
+  }
+
+  // ── Payment method toggle ─────────────────────────────────────────────────
+  function selectMethod(method) {
+    document.getElementById('payMethodInput').value = method;
+    document.querySelectorAll('.payment-opt').forEach(el => el.classList.remove('selected'));
+    const map = { online: 'opt-online', wallet: 'opt-wallet', cod: 'opt-cod' };
+    document.getElementById(map[method]).classList.add('selected');
+  }
+
+  // ── Form submit ───────────────────────────────────────────────────────────
+  document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const btn       = document.getElementById('placeOrderBtn');
+    const txtSpan   = document.getElementById('btnText');
+    const spinSpan  = document.getElementById('btnSpinner');
+    const payMethod = document.getElementById('payMethodInput').value;
+    const addressId = document.querySelector('input[name="addressId"]:checked')?.value;
+
+    // ── Address validation → inline error ────────────────────────────────────
+    if (!addressId) {
+      showCheckoutError('Please select a shipping address before placing your order.');
+      return;
+    }
+
+    // ── Wallet balance check → inline error ──────────────────────────────────
+    if (payMethod === 'wallet') {
+      const currentTotal = Math.max(0, BASE_SUBTOTAL + BASE_SHIPPING - appliedDiscount);
+      if (WALLET_BALANCE < currentTotal) {
+        showCheckoutError(
+          `Insufficient Comizon Pay balance. ` +
+          `Your balance: $${WALLET_BALANCE.toFixed(2)} — ` +
+          `Order total: $${currentTotal.toFixed(2)}. ` +
+          `Please top up your wallet first.`
+        );
+        return;
+      }
+    }
+
+    btn.disabled = true;
+    txtSpan.classList.add('d-none');
+    spinSpan.classList.remove('d-none');
+
+    const payload = {
+      addressId,
+      paymentMethod: payMethod,
+      couponCode:    appliedCode,
+    };
+
+    try {
+      // ── COD ──────────────────────────────────────────────────────────────
+      if (payMethod === 'cod') {
+        const res    = await fetch('/checkout/place-order', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify(payload),
+        });
+        const result = await res.json();
+        if (result.success) {
+          window.location.href = result.redirectUrl;
+        } else {
+          throw new Error(result.message || 'Failed to place COD order');
+        }
+        return;
+      }
+
+      // ── WALLET ───────────────────────────────────────────────────────────
+      if (payMethod === 'wallet') {
+        const res    = await fetch('/checkout/place-order', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify(payload),
+        });
+        const result = await res.json();
+        if (result.success) {
+          window.location.href = result.redirectUrl;
+        } else {
+          throw new Error(result.message || 'Wallet payment failed');
+        }
+        return;
+      }
+
+      // ── ONLINE (Razorpay) ─────────────────────────────────────────────
+      const rzpRes = await fetch('/checkout/place-order', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),   // payload already contains couponCode
+      });
+
+      if (!rzpRes.ok) throw new Error('Order preparation failed');
+      const rzpData = await rzpRes.json();
+      if (!rzpData.pendingOrder) throw new Error(rzpData.message || 'Order preparation failed');
+
+      const options = {
+        key:         rzpData.key,
+        amount:      rzpData.amount,          // ← this is now the discounted amount in paise
+        currency:    rzpData.currency,
+        name:        'Comizon',
+        description: appliedCode ? `Order (Coupon: ${appliedCode})` : 'Online Payment',
+        order_id:    rzpData.razorpayOrderId,
+        handler: async function (response) {
+          const verifyRes = await fetch('/checkout/razorpay/verify', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+              razorpay_order_id:   response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature:  response.razorpay_signature,
+              addressId,
+            }),
+          });
+          const verifyJson = await verifyRes.json();
+          if (verifyJson.success) {
+            window.location.href = verifyJson.redirectUrl;
+          } else {
+            alert('Payment verification failed.');
+          }
+        },
+        prefill: {
+          name:    "<%= user.firstName %>",
+          email:   "<%= user.email %>",
+          contact: "<%= user.phone %>",
+        },
+        theme: { color: '#E63946' },
+        modal: {
+          ondismiss: function () {
+            btn.disabled = false;
+            txtSpan.classList.remove('d-none');
+            spinSpan.classList.add('d-none');
+          },
+        },
+      };
+
+      const rzp = new Razorpay(options);
+      rzp.open();
+
+    } catch (err) {
+      console.error(err);
+      showCheckoutError(err.message || 'Something went wrong. Please try again.');
+      btn.disabled = false;
+      txtSpan.classList.remove('d-none');
+      spinSpan.classList.add('d-none');
+    }
+  });
+
+  // ── Inline error helper ────────────────────────────────────────────────────
+  function showCheckoutError(msg) {
+    let el = document.getElementById('checkoutInlineError');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'checkoutInlineError';
+      el.className = 'alert alert-danger rounded-0 border-0 border-start border-4 border-danger mb-3';
+      // Insert before the Place Order button
+      const btn = document.getElementById('placeOrderBtn');
+      btn.parentNode.insertBefore(el, btn);
+    }
+    el.innerHTML = `<i class="fas fa-exclamation-circle me-2"></i>${msg}`;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Auto-hide after 6 seconds
+    clearTimeout(el._hideTimer);
+    el._hideTimer = setTimeout(() => el.remove(), 6000);
+  }
+  </script>
+</body>
+</html>
