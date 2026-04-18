@@ -1,0 +1,103 @@
+<%- include('../partials/user-head', { title: 'Order Placed!' }) %>
+
+<body class="bg-black text-light">
+  <%- include('../partials/header') %>
+
+  <style>
+    .success-wrap { margin-top:90px; min-height:80vh; display:flex; align-items:center; padding:3rem 0; }
+    .success-card { background:#1A1A1A; border:1px solid #333; border-top:4px solid #28a745; max-width:680px; margin:0 auto; padding:3rem 2.5rem; text-align:center; }
+    .success-icon { width:90px; height:90px; border-radius:50%; background:rgba(40,167,69,.15); border:3px solid #28a745; display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem; }
+    .order-id-badge { background:#111; border:1px solid #444; display:inline-block; padding:.4rem 1.2rem; font-family:monospace; font-size:1rem; letter-spacing:2px; color:#FFD700; margin-bottom:1.5rem; }
+    .item-mini { display:flex; align-items:center; gap:.8rem; padding:.5rem 0; border-bottom:1px solid #2a2a2a; text-align:left; }
+    .item-mini:last-child { border-bottom:none; }
+    .item-mini img { width:40px; height:55px; object-fit:cover; flex-shrink:0; }
+    .status-badge { display:inline-block; padding:.25rem .75rem; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; background:rgba(255,193,7,.15); color:#FFD700; border:1px solid rgba(255,193,7,.3); }
+  </style>
+
+  <div class="container success-wrap">
+    <div class="w-100">
+      <div class="success-card">
+
+        <!-- Icon -->
+        <div class="success-icon">
+          <i class="fas fa-check fa-2x text-success"></i>
+        </div>
+
+        <!-- Heading -->
+        <h2 class="fw-bold mb-1">Order Placed Successfully!</h2>
+        <p class="text-white-50 mb-3">Thank you for shopping with <strong class="text-danger">COMIZON<span class="text-white">.</span></strong></p>
+
+        <!-- Illustration / Order ID -->
+        <div class="order-id-badge">
+          #<%= order.orderId %>
+        </div>
+
+        <div class="d-flex justify-content-center gap-4 mb-4 flex-wrap">
+          <div>
+            <div class="text-white-50 small">Order Date</div>
+            <div class="fw-semibold"><%= new Date(order.orderedAt).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}) %></div>
+          </div>
+          <div>
+            <div class="text-white-50 small">Payment</div>
+            <div class="fw-semibold text-uppercase"><%= order.paymentMethod || 'COD' %></div>
+          </div>
+          <div>
+            <div class="text-white-50 small">Total</div>
+            <div class="fw-semibold text-danger">$<%= order.total.toFixed(2) %></div>
+          </div>
+          <div>
+            <div class="text-white-50 small">Status</div>
+            <div class="status-badge"><%= order.status %></div>
+          </div>
+        </div>
+
+        <!-- Items preview -->
+        <% if (order.items && order.items.length > 0) { %>
+          <div class="mb-4" style="max-height:200px;overflow-y:auto;padding:0 .5rem;">
+            <% order.items.forEach(item => { %>
+              <div class="item-mini">
+                <% if (item.image) { %>
+                  <img src="<%= item.image %>" alt="">
+                <% } else { %>
+                  <div style="width:40px;height:55px;background:#2a2a2a;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-book text-white-50 fa-sm"></i>
+                  </div>
+                <% } %>
+                <div class="flex-grow-1">
+                  <div class="small fw-semibold"><%= item.productName %></div>
+                  <div class="text-white-50" style="font-size:.75rem;">Qty: <%= item.quantity %></div>
+                </div>
+                <div class="text-danger small fw-bold flex-shrink-0">$<%= item.lineTotal.toFixed(2) %></div>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+
+        <!-- Delivery note -->
+        <div class="alert alert-dark border border-secondary rounded-0 mb-4 text-start" style="font-size:.82rem;">
+          <i class="fas fa-truck me-2 text-warning"></i>
+          Your order will be packed and dispatched soon. You can track its status in <strong>My Orders</strong>.
+          <% if (order.shippingAddress && order.shippingAddress.city) { %>
+            <br><i class="fas fa-map-marker-alt me-2 text-danger mt-2 d-inline-block"></i>
+            Delivering to: <%= order.shippingAddress.addressLane1 %>, <%= order.shippingAddress.city %>
+            <% if (order.shippingAddress.pincode) { %> - <%= order.shippingAddress.pincode %><% } %>
+          <% } %>
+        </div>
+
+        <!-- CTAs -->
+        <div class="d-flex gap-3 justify-content-center flex-wrap">
+          <a href="/orders/<%= order._id %>" class="btn btn-outline-warning rounded-0 fw-bold px-4">
+            <i class="fas fa-clipboard-list me-2"></i>View Order Details
+          </a>
+          <a href="/" class="btn btn-danger rounded-0 fw-bold px-4">
+            <i class="fas fa-shopping-bag me-2"></i>Continue Shopping
+          </a>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <%- include('../partials/footer') %>
+</body>
+</html>

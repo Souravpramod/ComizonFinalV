@@ -1,0 +1,400 @@
+<%- include('../../partials/user-head', { title: 'Order Detail' }) %>
+
+<body class="bg-black text-light">
+  <%- include('../../partials/header') %>
+
+  <style>
+    .detail-wrap { margin-top:90px; padding:2rem 0 4rem; }
+    .info-card { background:#1A1A1A; border:1px solid #333; padding:1.5rem; margin-bottom:1.2rem; }
+    .section-label { font-size:.7rem; text-transform:uppercase; letter-spacing:1.5px; color:#E63946; font-weight:700; border-left:3px solid #E63946; padding-left:.5rem; margin-bottom:.8rem; }
+    .product-row { background:#111; border:1px solid #2a2a2a; padding:1rem; margin-bottom:.8rem; }
+    .product-row:last-child { margin-bottom:0; }
+    .product-img { width:65px; height:90px; object-fit:cover; flex-shrink:0; }
+    .product-img-ph { width:65px; height:90px; background:#2a2a2a; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .timeline-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; margin-top:3px; }
+    .timeline-line { width:2px; background:#333; flex:1; min-height:20px; margin:.2rem auto; }
+
+    /* Status pills */
+    .badge-pending       { background:rgba(255,193,7,.15);  color:#FFD700; border:1px solid rgba(255,193,7,.3); }
+    .badge-processing    { background:rgba(23,162,184,.15); color:#17a2b8; border:1px solid rgba(23,162,184,.3); }
+    .badge-shipped       { background:rgba(13,110,253,.15); color:#6ea8fe; border:1px solid rgba(13,110,253,.3); }
+    .badge-out_for_delivery { background:rgba(111,66,193,.15); color:#a98eda; border:1px solid rgba(111,66,193,.3); }
+    .badge-delivered     { background:rgba(40,167,69,.15);  color:#75b798; border:1px solid rgba(40,167,69,.3); }
+    .badge-cancelled     { background:rgba(220,53,69,.15);  color:#ea868f; border:1px solid rgba(220,53,69,.3); }
+    .badge-return_requested { background:rgba(253,126,20,.15); color:#fd9843; border:1px solid rgba(253,126,20,.3); }
+    .status-pill { display:inline-block; padding:.25rem .8rem; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; border-radius:2px; }
+
+    /* Modal */
+    .reason-modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:9000; align-items:center; justify-content:center; }
+    .reason-modal-bg.open { display:flex; }
+    .reason-modal { background:#1A1A1A; border:1px solid #444; padding:2rem; width:100%; max-width:460px; }
+    textarea.reason-box { background:#111; border:1px solid #444; color:#fff; resize:none; width:100%; padding:.6rem; border-radius:0; }
+    textarea.reason-box:focus { outline:none; border-color:#E63946; }
+
+    /* Loading */
+    .btn-loading .spinner-border { width:1rem; height:1rem; }
+  </style>
+
+  <!-- Cancel Modal -->
+  <div class="reason-modal-bg" id="cancelModal">
+    <div class="reason-modal">
+      <h5 class="fw-bold mb-1">Cancel Item</h5>
+      <p class="text-white-50 small mb-3">Reason for cancellation (optional)</p>
+      <form id="cancelForm" method="POST">
+        <textarea class="reason-box mb-3" name="reason" rows="3" placeholder="e.g. Ordered by mistake…"></textarea>
+        <div class="d-flex gap-2 justify-content-end">
+          <button type="button" class="btn btn-outline-secondary btn-sm rounded-0 fw-bold px-4" onclick="closeModal('cancelModal')">Back</button>
+          <button type="submit" class="btn btn-danger btn-sm rounded-0 fw-bold px-4" id="cancelSubmitBtn">
+            <span class="btn-text">Confirm Cancel</span>
+            <span class="d-none spinner-border spinner-border-sm btn-loading"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Cancel ORDER Modal -->
+  <div class="reason-modal-bg" id="cancelOrderModal">
+    <div class="reason-modal">
+      <h6 class="text-white fw-bold mb-2">Cancel Entire Order</h6>
+      <p class="text-white-50 small mb-3">This will cancel all items in the order and restore stock. Reason is optional.</p>
+      <form id="cancelOrderForm" method="POST" action="/orders/<%= order._id %>/cancel">
+        <textarea class="reason-box mb-3" name="reason" rows="3" placeholder="Optional reason…"></textarea>
+        <div class="d-flex gap-2 justify-content-end">
+          <button type="button" class="btn btn-outline-secondary btn-sm rounded-0 fw-bold px-4"
+                  onclick="closeModal('cancelOrderModal')">Back</button>
+          <button type="submit" class="btn btn-danger btn-sm rounded-0 fw-bold px-4" id="cancelOrderSubmitBtn">
+            <span class="btn-text"><i class="fas fa-ban me-1"></i>Cancel Order</span>
+            <span class="d-none spinner-border spinner-border-sm btn-loading"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Return Entire Order Modal -->
+  <div class="reason-modal-bg" id="returnOrderModal">
+    <div class="reason-modal">
+      <h6 class="text-white fw-bold mb-2">Return Entire Order</h6>
+      <p class="text-white-50 small mb-3">This will request a return for all delivered items. Reason is required.</p>
+      <form id="returnOrderForm" method="POST" action="/orders/<%= order._id %>/return">
+        <textarea class="reason-box mb-1" name="reason" rows="3" placeholder="e.g. All items damaged, wrong order…" required id="returnOrderReasonBox"></textarea>
+        <div class="text-danger small mb-3 d-none" id="returnOrderReasonErr">Please enter a reason for return.</div>
+        <div class="d-flex gap-2 justify-content-end">
+          <button type="button" class="btn btn-outline-secondary btn-sm rounded-0 fw-bold px-4" onclick="closeModal('returnOrderModal')">Back</button>
+          <button type="submit" class="btn btn-warning btn-sm rounded-0 fw-bold px-4 text-dark" id="returnOrderSubmitBtn" onclick="return validateReturnOrder()">
+            <span class="btn-text"><i class="fas fa-undo me-1"></i>Return Order</span>
+            <span class="d-none spinner-border spinner-border-sm btn-loading"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Return ITEM MODEL -->
+  <div class="reason-modal-bg" id="returnModal">
+    <div class="reason-modal">
+      <h5 class="fw-bold mb-1">Return Item</h5>
+      <p class="text-white-50 small mb-3">Reason for return <span class="text-danger">*</span> (required)</p>
+      <form id="returnForm" method="POST">
+        <textarea class="reason-box mb-1" name="reason" rows="3" placeholder="e.g. Received wrong item, damaged…" required id="returnReasonBox"></textarea>
+        <div class="text-danger small mb-3 d-none" id="returnReasonErr">Please enter a reason for return.</div>
+        <div class="d-flex gap-2 justify-content-end">
+          <button type="button" class="btn btn-outline-secondary btn-sm rounded-0 fw-bold px-4" onclick="closeModal('returnModal')">Back</button>
+          <button type="submit" class="btn btn-warning btn-sm rounded-0 fw-bold px-4 text-dark" id="returnSubmitBtn" onclick="return validateReturn()">
+            <span class="btn-text">Submit Return</span>
+            <span class="d-none spinner-border spinner-border-sm btn-loading"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="container detail-wrap">
+    <div class="row g-4">
+
+      <!-- Sidebar -->
+      <div class="col-lg-3">
+        <%- include('../../partials/profile-sidebar', { activePage: 'orders', user: locals.user }) %>
+      </div>
+
+      <!-- Main content -->
+      <div class="col-lg-9">
+
+        <% if (locals.error) { %>
+          <div class="alert alert-danger alert-dismissible rounded-0 fade show border-0 border-start border-4 border-danger mb-3">
+            <i class="fas fa-exclamation-circle me-2"></i><%= error %>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+          </div>
+        <% } %>
+        <% if (locals.success) { %>
+          <div class="alert alert-success alert-dismissible rounded-0 fade show border-0 border-start border-4 border-success mb-3">
+            <i class="fas fa-check-circle me-2"></i><%= success %>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+          </div>
+        <% } %>
+
+        <!-- Back + Header -->
+        <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+          <a href="/orders" class="text-white-50 text-decoration-none small">
+            <i class="fas fa-arrow-left me-1"></i>My Orders
+          </a>
+          <div class="flex-grow-1">
+            <h4 class="fw-bold mb-0 border-start border-3 border-danger ps-3">
+              Order <span style="color:#FFD700;font-family:monospace;">#<%= order.orderId %></span>
+            </h4>
+            <p class="text-white-50 small mb-0 ps-3">
+              Placed on <%= new Date(order.orderedAt).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}) %>
+            </p>
+          </div>
+          <!-- Invoice download -->
+          <a href="/orders/<%= order._id %>/invoice" target="_blank"
+             class="btn btn-outline-secondary btn-sm rounded-0 fw-bold">
+            <i class="fas fa-file-invoice me-1"></i>Download Invoice
+          </a>
+          <!-- Return whole order button — only show if delivered and within window -->
+          <% const orderDeliveredAt = order.deliveredAt ? new Date(order.deliveredAt) : null;
+             const orderWithinWindow = orderDeliveredAt
+               ? (Date.now() - orderDeliveredAt.getTime()) / (1000*60*60*24) <= (order.returnWindowDays || 7)
+               : false; %>
+          <% if (order.status === 'delivered' && orderWithinWindow) { %>
+            <button class="btn btn-warning btn-sm rounded-0 fw-bold text-dark"
+                    onclick="document.getElementById('returnOrderModal').classList.add('open')">
+              <i class="fas fa-undo me-1"></i>Return Order
+            </button>
+          <% } %>
+          <!-- Cancel whole order button — only show if cancellable and NOT delivered/shipped/etc -->
+          <%
+            const nonCancellableStatuses = ['delivered','shipped','out_for_delivery','cancelled','return_requested','returned'];
+            const canCancelOrder = ['pending','processing'].includes(order.status) && !nonCancellableStatuses.includes(order.status);
+          %>
+          <% if (canCancelOrder) { %>
+            <button class="btn btn-danger btn-sm rounded-0 fw-bold"
+                    onclick="document.getElementById('cancelOrderModal').classList.add('open')">
+              <i class="fas fa-ban me-1"></i>Cancel Order
+            </button>
+          <% } %>
+        </div>
+
+        <!-- Status + payment summary -->
+        <div class="info-card d-flex flex-wrap gap-4 align-items-center">
+          <div>
+            <div class="text-white-50 small mb-1">Order Status</div>
+            <%
+              const st = order.status || 'pending';
+            %>
+            <span class="status-pill badge-<%= st %>">
+              <%= st.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) %>
+            </span>
+          </div>
+          <div>
+            <div class="text-white-50 small mb-1">Payment</div>
+            <div class="fw-semibold small text-uppercase"><%= order.paymentMethod || 'COD' %></div>
+            <span class="badge bg-<%= order.paymentStatus==='paid'?'success':order.paymentStatus==='refunded'?'info':'warning' %>">
+              <%= order.paymentStatus?.charAt(0).toUpperCase()+order.paymentStatus?.slice(1) %>
+            </span>
+          </div>
+          <div>
+            <div class="text-white-50 small mb-1">Total</div>
+            <div class="text-danger fw-bold fs-5">$<%= order.total.toFixed(2) %></div>
+          </div>
+        </div>
+
+        <!-- Order Items — each product is individual -->
+        <div class="info-card">
+          <div class="section-label">Items in this Order</div>
+
+          <% order.items.forEach(item => {
+               const iStatus = item.itemStatus || 'pending';
+               const canCancel = ['pending','processing'].includes(iStatus);
+
+               const deliveredAt = order.deliveredAt
+    ? new Date(order.deliveredAt)
+    : (iStatus === 'delivered' && order.updatedAt ? new Date(order.updatedAt) : null);
+               const returnWindowDays = order.returnWindowDays || 7;
+               const withinWindow = deliveredAt
+                   ? (Date.now() - deliveredAt.getTime()) / (1000 * 60 * 60 * 24) <= returnWindowDays
+                   : false;
+               const canReturn     = iStatus === 'delivered' && withinWindow;
+               const returnExpired = iStatus === 'delivered' && !withinWindow;
+          %>
+            <div class="product-row">
+              <div class="d-flex gap-3">
+                <!-- Image -->
+                <% if (item.image) { %>
+                  <img src="<%= item.image %>" alt="" class="product-img">
+                <% } else { %>
+                  <div class="product-img-ph"><i class="fas fa-book text-white-50"></i></div>
+                <% } %>
+
+                <!-- Info -->
+                <div class="flex-grow-1">
+                  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                    <div>
+                      <div class="fw-semibold"><%= item.productName %></div>
+                      <div class="text-white-50 small">SKU: <%= item.sku || '—' %></div>
+                      <% const activeQty = item.unitStatuses.filter(u => u.status !== 'cancelled').length; %>
+                      <div class="text-white-50 small">Qty: <%= activeQty > 0 ? activeQty : item.quantity %> × $<%= item.price.toFixed(2) %></div>
+                    </div>
+                    <div class="text-end">
+                      <div class="text-danger fw-bold">$<%= item.lineTotal.toFixed(2) %></div>
+                      <span class="status-pill badge-<%= iStatus %>">
+                        <%= iStatus.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) %>
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Cancel/return reason display -->
+                  <% if (item.cancelReason) { %>
+                    <div class="text-white-50 small mt-2">
+                      <i class="fas fa-info-circle me-1 text-danger"></i>
+                      Cancel reason: <em><%= item.cancelReason %></em>
+                    </div>
+                  <% } %>
+                  <% if (item.returnReason) { %>
+                    <div class="text-white-50 small mt-2">
+                      <i class="fas fa-undo me-1 text-warning"></i>
+                      Return reason: <em><%= item.returnReason %></em>
+                    </div>
+                  <% } %>
+
+                  <!-- Action buttons -->
+                  <div class="mt-3 d-flex gap-2 flex-wrap align-items-center">
+                    <% if (canCancel) { %>
+                      <button class="btn btn-outline-danger btn-sm rounded-0 fw-bold"
+                              onclick="openCancel('<%= order._id %>','<%= item._id %>')">
+                        <i class="fas fa-times me-1"></i>Cancel Item
+                      </button>
+                    <% } %>
+                    <% if (canReturn) { %>
+                      <button class="btn btn-sm rounded-0 fw-bold text-dark"
+                              style="background:#FFD700;border:1px solid #FFD700;"
+                              onclick="openReturn('<%= order._id %>','<%= item._id %>')">
+                        <i class="fas fa-undo me-1"></i>Return Item
+                      </button>
+                    <% } %>
+                    <% if (returnExpired) { %>
+                      <span class="text-white-50 small">
+                        <i class="fas fa-clock me-1 text-danger"></i>Return window expired
+                        (<%= order.returnWindowDays || 7 %> days)
+                      </span>
+                    <% } %>
+                    <% if (iStatus === 'return_requested') { %>
+                      <span class="btn btn-sm rounded-0 fw-bold disabled"
+                            style="background:rgba(253,126,20,.2);color:#fd9843;border:1px solid rgba(253,126,20,.3);">
+                        <i class="fas fa-clock me-1"></i>Return Requested
+                      </span>
+                    <% } %>
+                    <% if (iStatus === 'returned') { %>
+                      <span class="text-success small"><i class="fas fa-check-circle me-1"></i>Returned</span>
+                    <% } %>
+                    <% if (iStatus === 'cancelled') { %>
+                      <span class="text-white-50 small">
+                        <i class="fas fa-ban me-1 text-danger"></i>Cancelled
+                      </span>
+                    <% } %>
+                    <% if (iStatus === 'delivered' && !canReturn && !returnExpired) { %>
+                      <span class="text-success small"><i class="fas fa-check-circle me-1"></i>Delivered</span>
+                    <% } %>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+
+        <!-- Two column: Address + Summary -->
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="info-card h-100">
+              <div class="section-label">Delivery Address</div>
+              <% const a = order.shippingAddress || {}; %>
+              <% if (a.addressLane1) { %>
+                <p class="mb-0 small">
+                  <%= a.addressLane1 %><br>
+                  <% if (a.addressLane2) { %><%= a.addressLane2 %><br><% } %>
+                  <%= a.city %><% if (a.state) { %>, <%= a.state %><% } %><br>
+                  <% if (a.pincode) { %><%= a.pincode %><% } %> <%= a.country || '' %>
+                </p>
+              <% } else { %>
+                <p class="text-white-50 small mb-0">No address on file</p>
+              <% } %>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="info-card h-100">
+              <div class="section-label">Price Breakdown</div>
+              <div class="d-flex justify-content-between small text-white-50 mb-2">
+                <span>Subtotal</span><span>$<%= order.subtotal.toFixed(2) %></span>
+              </div>
+              <div class="d-flex justify-content-between small text-white-50 mb-2">
+                <span>Shipping</span>
+                <span><%= order.shippingFee === 0 ? 'FREE' : '$' + order.shippingFee.toFixed(2) %></span>
+              </div>
+              <hr class="border-secondary my-2">
+              <div class="d-flex justify-content-between fw-bold">
+                <span>Total</span><span class="text-danger">$<%= order.total.toFixed(2) %></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Invoice CTA -->
+        <div class="d-flex justify-content-end mt-3">
+          <a href="/orders/<%= order._id %>/invoice" target="_blank"
+             class="btn btn-outline-secondary rounded-0 fw-bold px-4">
+            <i class="fas fa-file-pdf me-2 text-danger"></i>Download Invoice
+          </a>
+        </div>
+
+      </div><!-- /col-lg-9 -->
+    </div><!-- /row -->
+  </div><!-- /container -->
+
+  <%- include('../../partials/footer') %>
+
+  <script>
+    function openCancel(orderId, itemId) {
+      document.getElementById('cancelForm').action = `/orders/${orderId}/items/${itemId}/cancel`;
+      document.getElementById('cancelModal').classList.add('open');
+    }
+    function openReturn(orderId, itemId) {
+      document.getElementById('returnForm').action = `/orders/${orderId}/items/${itemId}/return`;
+      document.getElementById('returnModal').classList.add('open');
+    }
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+    function validateReturn() {
+      const reason = document.getElementById('returnReasonBox').value.trim();
+      const err    = document.getElementById('returnReasonErr');
+      if (!reason) { err.classList.remove('d-none'); return false; }
+      err.classList.add('d-none');
+      return true;
+    }
+
+    function validateReturnOrder() {
+      const reason = document.getElementById('returnOrderReasonBox').value.trim();
+      const err    = document.getElementById('returnOrderReasonErr');
+      if (!reason) { err.classList.remove('d-none'); return false; }
+      err.classList.add('d-none');
+      return true;
+    }
+    // Loading spinner on form submit
+    ['cancelForm','cancelOrderForm','returnForm','returnOrderForm'].forEach(id => {
+      document.getElementById(id).addEventListener('submit', function () {
+        const btn = this.querySelector('[type=submit]');
+        btn.querySelector('.btn-text').classList.add('d-none');
+        btn.querySelector('.btn-loading').classList.remove('d-none');
+        btn.disabled = true;
+      });
+    });
+    // Close modal on backdrop click
+    document.querySelectorAll('.reason-modal-bg').forEach(el => {
+      el.addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('open');
+      });
+    });
+  </script>
+</body>
+</html>
