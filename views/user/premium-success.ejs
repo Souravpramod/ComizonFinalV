@@ -1,0 +1,99 @@
+<%- include('../partials/user-head', { title: 'Welcome to Premium!' }) %>
+
+<body class="bg-black text-light">
+  <%- include('../partials/header') %>
+
+  <style>
+    .psuccess-wrap { margin-top:90px; min-height:80vh; display:flex; align-items:center; padding:3rem 0; }
+    .psuccess-card { background:#1A1A1A; border:1px solid #333; max-width:640px; margin:0 auto; padding:3rem 2.5rem; text-align:center; }
+    .psuccess-icon { width:96px; height:96px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem; }
+    .plan-badge { display:inline-block; padding:.4rem 1.4rem; font-family:monospace; font-size:.95rem; letter-spacing:2px; font-weight:700; margin-bottom:1.5rem; }
+    .meta-row { display:flex; justify-content:center; gap:2.5rem; flex-wrap:wrap; margin-bottom:2rem; }
+    .meta-item .label { font-size:.72rem; text-transform:uppercase; letter-spacing:1px; color:#888; }
+    .meta-item .value { font-size:1rem; font-weight:700; color:#fff; }
+    .perks-list { list-style:none; padding:0; text-align:left; margin:0 auto 2rem; max-width:360px; }
+    .perks-list li { padding:.4rem 0; font-size:.9rem; color:#ccc; }
+  </style>
+
+  <div class="container psuccess-wrap">
+    <div class="w-100">
+      <div class="psuccess-card" style="border-top:4px solid <%= planMeta.color %>;">
+
+        <!-- Icon -->
+        <div class="psuccess-icon"
+             style="background:<%=planMeta.color%>22; border:3px solid <%=planMeta.color%>;">
+          <i class="fas <%= planMeta.icon %> fa-2x" style="color:<%=planMeta.color%>;"></i>
+        </div>
+
+        <!-- Heading -->
+        <h2 class="fw-bold mb-1">You're Now <span style="color:<%=planMeta.color%>;"><%=planMeta.label%></span>!</h2>
+        <p class="text-white-50 mb-3">
+          Welcome to the premium experience at <strong class="text-danger">COMIZON<span class="text-white">.</span></strong>
+        </p>
+
+        <!-- Plan badge -->
+        <div class="plan-badge" style="background:<%=planMeta.color%>22; color:<%=planMeta.color%>; border:1px solid <%=planMeta.color%>44;">
+          <%= planMeta.label.toUpperCase() %> MEMBER
+        </div>
+
+        <!-- Meta -->
+        <div class="meta-row">
+          <div class="meta-item">
+            <div class="label">Plan</div>
+            <div class="value"><%= planMeta.label %></div>
+          </div>
+          <div class="meta-item">
+            <div class="label">Duration</div>
+            <div class="value"><%= planMeta.months %> Month<%= planMeta.months > 1 ? 's' : '' %></div>
+          </div>
+          <% if (expiresAt) { %>
+          <div class="meta-item">
+            <div class="label">Valid Until</div>
+            <div class="value"><%= new Date(expiresAt).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'}) %></div>
+          </div>
+          <% } %>
+        </div>
+
+        <!-- Perks -->
+        <div class="p-3 mb-4 rounded-0" style="background:#111; border:1px solid #333; border-left:4px solid <%=planMeta.color%>;">
+          <p class="fw-bold text-start mb-2 small" style="color:<%=planMeta.color%>; letter-spacing:1px; text-transform:uppercase;">
+            <i class="fas fa-unlock-alt me-2"></i>Your Benefits Are Now Active
+          </p>
+          <ul class="perks-list">
+            <li><i class="fas fa-check me-2" style="color:<%=planMeta.color%>;"></i>Be Skeptic curated library</li>
+            <li><i class="fas fa-check me-2" style="color:<%=planMeta.color%>;"></i>Community & standard support</li>
+            <% if (plan === 'advanced' || plan === 'premium_plus') { %>
+              <li><i class="fas fa-check me-2" style="color:<%=planMeta.color%>;"></i>Early access to new drops</li>
+              <li><i class="fas fa-check me-2" style="color:<%=planMeta.color%>;"></i>Priority support</li>
+            <% } %>
+            <% if (plan === 'premium_plus') { %>
+              <li><i class="fas fa-check me-2" style="color:<%=planMeta.color%>;"></i>Exclusive collectibles</li>
+              <li><i class="fas fa-check me-2" style="color:<%=planMeta.color%>;"></i>Gold premium badge</li>
+            <% } %>
+          </ul>
+        </div>
+
+        <!-- CTA buttons -->
+        <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center mb-4">
+          <a href="/premium" class="btn fw-bold rounded-0 px-4 py-2"
+             style="background:<%=planMeta.color%>; color:<%= plan==='premium_plus'?'#000':'#fff' %>; border:none;">
+            <i class="fas fa-star me-2"></i>Enter Premium Portal
+          </a>
+          <a href="/" class="btn btn-outline-secondary rounded-0 px-4 py-2">
+            <i class="fas fa-home me-2"></i>Browse Store
+          </a>
+        </div>
+
+        <p class="text-white-50 mb-0" style="font-size:.75rem;">
+          <i class="fas fa-shield-alt me-1 text-success"></i>
+          Your membership is secured and will auto-expire after <%= planMeta.months %> month<%= planMeta.months > 1 ? 's' : '' %>.
+          No auto-renewal — you're in full control.
+        </p>
+
+      </div>
+    </div>
+  </div>
+
+  <%- include('../partials/footer') %>
+</body>
+</html>
