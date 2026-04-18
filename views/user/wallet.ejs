@@ -1,0 +1,326 @@
+<%- include('../partials/user-head', { title: 'My Wallet' }) %>
+
+<body class="bg-black text-light">
+  <%- include('../partials/header') %>
+
+  <style>
+    .wallet-wrap { margin-top: 90px; padding: 2rem 0 5rem; }
+
+    /* ── Balance card ── */
+    .balance-card {
+      background: linear-gradient(135deg, #1a0a0a 0%, #2a0d0d 50%, #1a1a1a 100%);
+      border: 1px solid #E63946;
+      padding: 2.5rem 2rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .balance-card::before {
+      content: '';
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 200px; height: 200px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(230,57,70,.18) 0%, transparent 70%);
+    }
+    .balance-label {
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #aaa;
+      font-weight: 700;
+      margin-bottom: .4rem;
+    }
+    .balance-amount {
+      font-size: 3rem;
+      font-weight: 900;
+      color: #E63946;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+    .balance-sub { font-size: .78rem; color: #666; margin-top: .4rem; }
+
+    /* ── Section boxes (same as checkout) ── */
+    .section-box { background: #1A1A1A; border: 1px solid #333; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .section-title {
+      font-size: .75rem; text-transform: uppercase; letter-spacing: 1.5px;
+      color: #E63946; font-weight: 700; margin-bottom: 1.2rem;
+      border-left: 3px solid #E63946; padding-left: .6rem;
+    }
+
+    /* ── Top-up amount pills ── */
+    .topup-pill {
+      border: 2px solid #333; background: #111; color: #fff;
+      padding: .45rem 1.1rem; font-size: .82rem; font-weight: 600;
+      cursor: pointer; transition: all .18s;
+    }
+    .topup-pill:hover, .topup-pill.active { border-color: #E63946; color: #E63946; }
+
+    /* ── Transaction list ── */
+    .txn-row {
+      display: flex; align-items: center; gap: 1rem;
+      padding: .85rem 0; border-bottom: 1px solid #222;
+    }
+    .txn-row:last-child { border-bottom: none; }
+    .txn-icon {
+      width: 38px; height: 38px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .85rem; flex-shrink: 0;
+    }
+    .txn-icon.credit { background: rgba(40,167,69,.15); color: #28a745; border: 1px solid rgba(40,167,69,.3); }
+    .txn-icon.debit  { background: rgba(230,57,70,.12);  color: #E63946; border: 1px solid rgba(230,57,70,.25); }
+    .txn-desc  { font-size: .85rem; font-weight: 500; }
+    .txn-date  { font-size: .72rem; color: #666; margin-top: 2px; }
+    .txn-amount { font-weight: 700; font-size: .92rem; white-space: nowrap; }
+    .txn-amount.credit { color: #28a745; }
+    .txn-amount.debit  { color: #E63946; }
+
+    /* ── Input ── */
+    .wallet-input {
+      background: #111; border: 1px solid #444; color: #fff;
+      border-radius: 0; padding: .6rem 1rem;
+    }
+    .wallet-input:focus { border-color: #E63946; outline: none; box-shadow: 0 0 0 2px rgba(230,57,70,.2); background: #111; color:#fff; }
+    .wallet-input::placeholder { color: #555; }
+
+    /* ── Badges ── */
+    .reason-badge {
+      font-size: .6rem; padding: 2px 6px; text-transform: uppercase;
+      font-weight: 700; letter-spacing: .5px;
+    }
+
+    #topupMsg { min-height: 1.4rem; }
+  </style>
+
+  <div class="container wallet-wrap">
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+      <a href="/profile" class="text-white-50 text-decoration-none small">
+        <i class="fas fa-arrow-left me-1"></i>Back to Profile
+      </a>
+      <h2 class="mb-0 fw-bold text-uppercase border-start border-3 border-danger ps-3">
+        <i class="fas fa-wallet me-2 text-danger"></i>Comizon Pay
+      </h2>
+    </div>
+
+    <% if (locals.error) { %>
+      <div class="alert alert-danger rounded-0 border-0 border-start border-4 border-danger mb-4">
+        <i class="fas fa-exclamation-circle me-2"></i><%= error %>
+      </div>
+    <% } %>
+    <% if (locals.success) { %>
+      <div class="alert alert-success rounded-0 border-0 border-start border-4 border-success mb-4">
+        <i class="fas fa-check-circle me-2"></i><%= success %>
+      </div>
+    <% } %>
+
+    <div class="row g-4">
+
+      <!-- LEFT — balance + top-up -->
+      <div class="col-lg-5">
+
+        <!-- Balance card -->
+        <div class="balance-card mb-4">
+          <div class="balance-label"><i class="fas fa-wallet me-1"></i>Available Balance</div>
+          <div class="balance-amount" id="liveBalance">$<%= wallet.balance.toFixed(2) %></div>
+          <div class="balance-sub">Comizon Pay · Instant. Secure. No gateway.</div>
+        </div>
+
+        <!-- Top-up box -->
+        <div class="section-box">
+          <div class="section-title"><i class="fas fa-plus-circle me-2"></i>Add Money</div>
+
+          <!-- Quick amounts -->
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <% [100, 250, 500, 1000, 2000].forEach(amt => { %>
+              <button type="button" class="topup-pill" onclick="setAmount(<%= amt %>)">
+                $<%= amt %>
+              </button>
+            <% }) %>
+          </div>
+
+          <!-- Custom amount -->
+          <div class="mb-3">
+            <label class="small text-white-50 mb-1">Or enter amount ($10 – $50,000)</label>
+            <div class="input-group">
+              <span class="input-group-text bg-black border-secondary text-white rounded-0">$</span>
+              <input type="number" id="topupAmount" min="10" max="50000"
+                     class="form-control wallet-input" placeholder="Enter amount">
+            </div>
+          </div>
+
+          <div id="topupMsg" class="small mb-3"></div>
+
+          <button class="btn btn-danger w-100 fw-bold rounded-0 py-2" onclick="initiateTopup()">
+            <i class="fas fa-bolt me-2"></i>Add to Wallet
+          </button>
+
+          <p class="text-white-50 mt-3 mb-0" style="font-size:.72rem;">
+            <i class="fas fa-lock me-1 text-success"></i>
+            Secured by Razorpay. Money is credited instantly after payment.
+          </p>
+        </div>
+
+        <!-- How it works -->
+        <div class="section-box">
+          <div class="section-title"><i class="fas fa-info-circle me-2"></i>How It Works</div>
+          <div class="d-flex flex-column gap-3" style="font-size:.82rem; color:#aaa;">
+            <div class="d-flex gap-3 align-items-start">
+              <span class="text-danger fw-bold" style="font-size:1.1rem; flex-shrink:0;">01</span>
+              <span>Add money once using any UPI, card, or netbanking.</span>
+            </div>
+            <div class="d-flex gap-3 align-items-start">
+              <span class="text-danger fw-bold" style="font-size:1.1rem; flex-shrink:0;">02</span>
+              <span>At checkout, pick <strong class="text-white">Comizon Pay</strong> — we deduct from your balance internally. No OTP, no wait.</span>
+            </div>
+            <div class="d-flex gap-3 align-items-start">
+              <span class="text-danger fw-bold" style="font-size:1.1rem; flex-shrink:0;">03</span>
+              <span>Cancellations are refunded back to your wallet immediately.</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT — transaction history -->
+      <div class="col-lg-7">
+        <div class="section-box">
+          <div class="section-title"><i class="fas fa-history me-2"></i>Transaction History</div>
+
+          <% if (!transactions || transactions.length === 0) { %>
+            <div class="text-center py-5">
+              <i class="fas fa-receipt text-white-50" style="font-size:2.5rem;"></i>
+              <p class="text-white-50 mt-3 mb-0">No transactions yet.<br>Add money to get started.</p>
+            </div>
+          <% } else { %>
+            <% transactions.forEach(txn => { %>
+              <div class="txn-row">
+                <div class="txn-icon <%= txn.type %>">
+                  <% if (txn.type === 'credit') { %>
+                    <i class="fas fa-arrow-down"></i>
+                  <% } else { %>
+                    <i class="fas fa-arrow-up"></i>
+                  <% } %>
+                </div>
+                <div class="flex-grow-1">
+                  <div class="txn-desc"><%= txn.description || txn.reason %></div>
+                  <div class="d-flex align-items-center gap-2 mt-1">
+                    <span class="txn-date">
+                      <%= new Date(txn.createdAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) %>
+                      &nbsp;·&nbsp;
+                      <%= new Date(txn.createdAt).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' }) %>
+                    </span>
+                    <span class="reason-badge
+                      <%= txn.reason === 'topup'         ? 'bg-primary text-white'  :
+                          txn.reason === 'order_payment' ? 'bg-danger text-white'   :
+                          txn.reason === 'order_refund'  ? 'bg-success text-white'  :
+                                                           'bg-secondary text-white' %>">
+                      <%= txn.reason.replace(/_/g,' ') %>
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <div class="txn-amount <%= txn.type %>">
+                    <%= txn.type === 'credit' ? '+' : '-' %>$<%= txn.amount.toFixed(2) %>
+                  </div>
+                  <div class="text-white-50 text-end" style="font-size:.68rem;">
+                    Bal: $<%= txn.balanceAfter.toFixed(2) %>
+                  </div>
+                </div>
+              </div>
+            <% }) %>
+          <% } %>
+        </div>
+      </div>
+
+    </div><!-- /row -->
+  </div>
+
+  <%- include('../partials/footer') %>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <script>
+    function setAmount(val) {
+      document.getElementById('topupAmount').value = val;
+      document.querySelectorAll('.topup-pill').forEach(p => p.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('topupMsg').innerHTML = '';
+    }
+
+    async function initiateTopup() {
+      const amountInput = document.getElementById('topupAmount');
+      const msgEl       = document.getElementById('topupMsg');
+      const amount      = parseFloat(amountInput.value);
+
+      if (!amount || amount < 10 || amount > 50000) {
+        msgEl.innerHTML = '<span class="text-danger"><i class="fas fa-exclamation-circle me-1"></i>Enter an amount between $10 and $50,000.</span>';
+        return;
+      }
+
+      msgEl.innerHTML = '<span class="text-white-50"><i class="fas fa-spinner fa-spin me-1"></i>Preparing payment…</span>';
+
+      try {
+        const res  = await fetch('/profile/wallet/topup/create', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ amount }),
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error || 'Failed to create order');
+
+        const options = {
+          key:         data.key,
+          amount:      data.amount,
+          currency:    data.currency,
+          name:        'Comizon Pay',
+          description: 'Wallet Top-up',
+          order_id:    data.razorpayOrderId,
+          handler: async function (response) {
+            msgEl.innerHTML = '<span class="text-white-50"><i class="fas fa-spinner fa-spin me-1"></i>Verifying payment…</span>';
+            const verifyRes = await fetch('/profile/wallet/topup/verify', {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body:    JSON.stringify({
+                razorpay_order_id:   response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature:  response.razorpay_signature,
+                amount:              data.amount,   // paise
+              }),
+            });
+            const rawText = await verifyRes.text();
+            let result;
+            try {
+              result = JSON.parse(rawText);
+            } catch (_) {
+              console.error('Server returned non-JSON:', rawText);
+              throw new Error('Server error during verification. Check console for details.');
+            }
+            if (result.success) {
+              document.getElementById('liveBalance').textContent = '$' + result.newBalance.toFixed(2);
+              msgEl.innerHTML = '<span class="text-success"><i class="fas fa-check-circle me-1"></i>$' + amount.toFixed(2) + ' added successfully! Refreshing…</span>';
+              setTimeout(() => window.location.reload(), 1800);
+            } else {
+              msgEl.innerHTML = '<span class="text-danger"><i class="fas fa-times-circle me-1"></i>Verification failed. Contact support.</span>';
+            }
+          },
+          prefill: {
+            name:  '<%= user.firstName %> <%= user.lastName %>',
+            email: '<%= user.email %>',
+          },
+          theme:  { color: '#E63946' },
+          modal: {
+            ondismiss: function () {
+              msgEl.innerHTML = '<span class="text-white-50">Payment cancelled.</span>';
+            },
+          },
+        };
+
+        const rzp = new Razorpay(options);
+        rzp.open();
+      } catch (err) {
+        console.error(err);
+        msgEl.innerHTML = '<span class="text-danger"><i class="fas fa-times-circle me-1"></i>' + err.message + '</span>';
+      }
+    }
+  </script>
+</body>
+</html>
