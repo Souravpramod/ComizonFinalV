@@ -1,3 +1,35 @@
+
+<style>
+    .admin-sidebar {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    /* Maintain your existing width and background colors here */
+}
+
+.admin-logo {
+    flex-shrink: 0; /* Prevents the logo section from squishing */
+    padding: 20px;
+}
+
+.sidebar-nav {
+    flex-grow: 1;
+    overflow-y: auto; /* Enables vertical scrolling for the links */
+    padding-bottom: 20px;
+}
+
+/* Custom Scrollbar for a cleaner look */
+.sidebar-nav::-webkit-scrollbar {
+    width: 5px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+    background: var(--admin-gold);
+    border-radius: 10px;
+}
+</style>
+
 <div class="admin-sidebar">
     <div class="admin-logo">
         <h3 class="logo-text mb-0">COMIZON<span style="color: var(--admin-gold);">.</span></h3>
@@ -6,8 +38,8 @@
 
     <nav class="sidebar-nav">
         <div class="nav-item">
-            <a href="/admin/dashboard" class="nav-link">
-                <i class="fas fa-chart-line"></i>
+            <a href="/admin/dashboard" class="nav-link <%= locals.title && locals.title.toLowerCase().includes('dashboard') ? 'active' : '' %>">
+                <i class="fas fa-tachometer-alt"></i>
                 Dashboard
             </a>
         </div>
@@ -24,7 +56,7 @@
             </a>
         </div>
         <div class="nav-item">
-            <a href="/admin/orders" class="nav-link">
+            <a href="/admin/orders" class="nav-link <%= locals.title && locals.title.toLowerCase().includes('order') ? 'active' : '' %>">
                 <i class="fas fa-shopping-cart"></i>
                 Orders
             </a>
@@ -36,24 +68,35 @@
             </a>
         </div>
         <div class="nav-item">
-            <a href="/admin/reports" class="nav-link">
-                <i class="fas fa-chart-bar"></i>
-                Sales Reports
+            <a href="/admin/stock" class="nav-link <%= locals.title && locals.title.toLowerCase().includes('stock') ? 'active' : '' %>">
+                <i class="fas fa-warehouse"></i>
+                Stock Management
             </a>
         </div>
         <div class="nav-item">
-            <a href="/admin/pgSettings" class="nav-link">
+            <a href="/admin/pgSettings" class="nav-link <%= locals.title && locals.title.toLowerCase().includes('page') ? 'active' : '' %>">
                 <i class="fas fa-book-open"></i>
                 Page Settings
             </a>
         </div>
         <div class="nav-item">
-            <a href="/admin/coupons" class="nav-link">
-                <i class="fas fa-store"></i>
+            <a href="/admin/coupons" class="nav-link <%= locals.title && locals.title.toLowerCase().includes('coupon') ? 'active' : '' %>">
+                <i class="fas fa-ticket-alt"></i>
                 Manage Coupons
             </a>
         </div>
-        
+        <div class="nav-item">
+            <a href="/admin/offers" class="nav-link <%= locals.title && locals.title.toLowerCase().includes('offer') ? 'active' : '' %>">
+                <i class="fas fa-tag"></i>
+                Offers
+            </a>
+        </div>
+        <div class="nav-item">
+            <a href="/admin/sales" class="nav-link <%= locals.title && locals.title.toLowerCase().includes('sales') ? 'active' : '' %>">
+                <i class="fas fa-chart-line"></i>
+                Sales Report
+            </a>
+        </div>
         <div class="nav-item">
             <a href="/admin/logout" class="nav-link">
                 <i class="fas fa-sign-out-alt"></i>

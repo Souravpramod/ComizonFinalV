@@ -89,6 +89,15 @@
     border-color: #E63946 !important;
     box-shadow: none !important;
   }
+  .form-control.is-invalid, .form-select.is-invalid {
+    border-color: #E63946 !important;
+  }
+  .field-error {
+    color: #ff4d4d;
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    display: block;
+  }
   .modal-content {
     background: #1a1a1a;
     border: 1px solid #444;
@@ -183,55 +192,63 @@
                     </div>
 
                     <!-- Inline Edit Form -->
-                    <div class="inline-edit-form" id="edit-<%= addr._id %>">
-                      <form action="/profile/address/edit/<%= addr._id %>" method="POST">
+                    <%
+                      const isEditOpen = locals.openEditId && locals.openEditId == addr._id.toString();
+                      const editErrors = isEditOpen && locals.formErrors && locals.formErrors.edit ? locals.formErrors.edit : {};
+                      const editData   = isEditOpen && locals.formData   && locals.formData.edit   ? locals.formData.edit   : {};
+                      const ev = (field, fallback) => editData[field] !== undefined ? editData[field] : (fallback || '');
+                    %>
+                    <div class="inline-edit-form <%= isEditOpen ? 'open' : '' %>" id="edit-<%= addr._id %>">
+                      <form action="/profile/address/edit/<%= addr._id %>" method="POST" novalidate>
                         <div class="row g-2">
                           <div class="col-md-6">
                             <label class="form-label text-danger small fw-bold">TYPE</label>
-                            <select name="type" class="form-select form-select-sm rounded-0">
-                              <option value="home"  <%= addr.type === 'home'  ? 'selected' : '' %>>Home</option>
-                              <option value="work"  <%= addr.type === 'work'  ? 'selected' : '' %>>Work</option>
-                              <option value="other" <%= addr.type === 'other' ? 'selected' : '' %>>Other</option>
+                            <select name="type" class="form-select form-select-sm rounded-0 <%= editErrors.type ? 'is-invalid' : '' %>">
+                              <option value="home"  <%= ev('type', addr.type) === 'home'  ? 'selected' : '' %>>Home</option>
+                              <option value="work"  <%= ev('type', addr.type) === 'work'  ? 'selected' : '' %>>Work</option>
+                              <option value="other" <%= ev('type', addr.type) === 'other' ? 'selected' : '' %>>Other</option>
                             </select>
+                            <% if (editErrors.type) { %><span class="field-error"><i class="fas fa-exclamation-circle me-1"></i><%= editErrors.type %></span><% } %>
                           </div>
                           <div class="col-md-6">
                             <label class="form-label text-danger small fw-bold">PINCODE</label>
-                            <input type="text" name="pincode" value="<%= addr.pincode || '' %>"
-                                   class="form-control form-control-sm rounded-0">
+                            <input type="text" name="pincode" value="<%= ev('pincode', addr.pincode) %>"
+                                   class="form-control form-control-sm rounded-0 <%= editErrors.pincode ? 'is-invalid' : '' %>">
+                            <% if (editErrors.pincode) { %><span class="field-error"><i class="fas fa-exclamation-circle me-1"></i><%= editErrors.pincode %></span><% } %>
                           </div>
                           <div class="col-12">
                             <label class="form-label text-danger small fw-bold">ADDRESS LINE 1</label>
-                            <input type="text" name="addressLane1" value="<%= addr.addressLane1 || '' %>"
-                                   class="form-control form-control-sm rounded-0" required>
+                            <input type="text" name="addressLane1" value="<%= ev('addressLane1', addr.addressLane1) %>"
+                                   class="form-control form-control-sm rounded-0 <%= editErrors.addressLane1 ? 'is-invalid' : '' %>">
+                            <% if (editErrors.addressLane1) { %><span class="field-error"><i class="fas fa-exclamation-circle me-1"></i><%= editErrors.addressLane1 %></span><% } %>
                           </div>
                           <div class="col-12">
                             <label class="form-label text-danger small fw-bold">ADDRESS LINE 2</label>
-                            <input type="text" name="addressLane2" value="<%= addr.addressLane2 || '' %>"
+                            <input type="text" name="addressLane2" value="<%= ev('addressLane2', addr.addressLane2) %>"
                                    class="form-control form-control-sm rounded-0">
                           </div>
                           <div class="col-md-4">
                             <label class="form-label text-danger small fw-bold">CITY</label>
-                            <input type="text" name="city" value="<%= addr.city || '' %>"
-                                   class="form-control form-control-sm rounded-0" required>
+                            <input type="text" name="city" value="<%= ev('city', addr.city) %>"
+                                   class="form-control form-control-sm rounded-0 <%= editErrors.city ? 'is-invalid' : '' %>">
+                            <% if (editErrors.city) { %><span class="field-error"><i class="fas fa-exclamation-circle me-1"></i><%= editErrors.city %></span><% } %>
                           </div>
                           <div class="col-md-4">
                             <label class="form-label text-danger small fw-bold">STATE</label>
-                            <input type="text" name="state" value="<%= addr.state || '' %>"
-                                   class="form-control form-control-sm rounded-0">
+                            <input type="text" name="state" value="<%= ev('state', addr.state) %>"
+                                   class="form-control form-control-sm rounded-0 <%= editErrors.state ? 'is-invalid' : '' %>">
+                            <% if (editErrors.state) { %><span class="field-error"><i class="fas fa-exclamation-circle me-1"></i><%= editErrors.state %></span><% } %>
                           </div>
                           <div class="col-md-4">
                             <label class="form-label text-danger small fw-bold">COUNTRY</label>
-                            <input type="text" name="country" value="<%= addr.country || '' %>"
-                                   class="form-control form-control-sm rounded-0">
+                            <input type="text" name="country" value="<%= ev('country', addr.country) %>"
+                                   class="form-control form-control-sm rounded-0 <%= editErrors.country ? 'is-invalid' : '' %>">
+                            <% if (editErrors.country) { %><span class="field-error"><i class="fas fa-exclamation-circle me-1"></i><%= editErrors.country %></span><% } %>
                           </div>
                           <div class="col-12 d-flex gap-2 mt-1">
-                            <button type="submit" class="btn btn-danger btn-sm rounded-0 fw-bold px-3">
-                              Save
-                            </button>
+                            <button type="submit" class="btn btn-danger btn-sm rounded-0 fw-bold px-3">Save</button>
                             <button type="button" class="btn btn-outline-secondary btn-sm rounded-0"
-                                    onclick="toggleEdit('<%= addr._id %>')">
-                              Cancel
-                            </button>
+                                    onclick="toggleEdit('<%= addr._id %>')">Cancel</button>
                           </div>
                         </div>
                       </form>
@@ -277,11 +294,7 @@
               <% if (user.phone) { %>
                 <p class="text-white-50 small mb-3"><%= user.phone %></p>
               <% } %>
-              <form action="/profile/address/default/<%= defaultAddr._id %>" method="POST">
-                <button type="submit" class="btn btn-danger rounded-0 fw-bold w-100">
-                  <i class="fas fa-check-circle me-2"></i>Save Changes
-                </button>
-              </form>
+              
             <% } else { %>
               <p class="text-muted small">No default address selected.</p>
             <% } %>
@@ -307,6 +320,11 @@
 </div>
 
 <!-- Add Address Modal -->
+<%
+  const addErrors = locals.formErrors && locals.formErrors.add ? locals.formErrors.add : {};
+  const addData   = locals.formData   && locals.formData.add   ? locals.formData.add   : {};
+  const openModal = Object.keys(addErrors).length > 0;
+%>
 <div class="modal fade" id="addAddressModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -316,42 +334,52 @@
         </h6>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
-      <form action="/profile/address/add" method="POST">
+      <form action="/profile/address/add" method="POST" novalidate>
         <div class="modal-body">
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label text-danger small fw-bold">TYPE</label>
-              <select name="type" class="form-select rounded-0" required>
-                <option value="home">Home</option>
-                <option value="work">Work</option>
-                <option value="other">Other</option>
+              <select name="type" class="form-select rounded-0 <%= addErrors.type ? 'is-invalid' : '' %>">
+                <option value="home"  <%= addData.type === 'home'  ? 'selected' : '' %>>Home</option>
+                <option value="work"  <%= addData.type === 'work'  ? 'selected' : '' %>>Work</option>
+                <option value="other" <%= addData.type === 'other' ? 'selected' : '' %>>Other</option>
               </select>
+              <% if (addErrors.type) { %><span class="field-error"><i class="fas fa-exclamation-circle me-1"></i><%= addErrors.type %></span><% } %>
             </div>
             <div class="col-md-6">
               <label class="form-label text-danger small fw-bold">PINCODE</label>
-              <input type="text" name="pincode" class="form-control rounded-0" placeholder="e.g. 560001">
+              <input type="text" name="pincode" value="<%= addData.pincode || '' %>"
+                     class="form-control rounded-0 <%= addErrors.pincode ? 'is-invalid' : '' %>" placeholder="e.g. 560001">
+              <% if (addErrors.pincode) { %><span class="field-error"><i class="fas fa-exclamation-circle me-1"></i><%= addErrors.pincode %></span><% } %>
             </div>
             <div class="col-12">
               <label class="form-label text-danger small fw-bold">ADDRESS LINE 1</label>
-              <input type="text" name="addressLane1" class="form-control rounded-0"
-                     placeholder="Street, building" required>
+              <input type="text" name="addressLane1" value="<%= addData.addressLane1 || '' %>"
+                     class="form-control rounded-0 <%= addErrors.addressLane1 ? 'is-invalid' : '' %>" placeholder="Street, building">
+              <% if (addErrors.addressLane1) { %><span class="field-error"><i class="fas fa-exclamation-circle me-1"></i><%= addErrors.addressLane1 %></span><% } %>
             </div>
             <div class="col-12">
               <label class="form-label text-danger small fw-bold">ADDRESS LINE 2</label>
-              <input type="text" name="addressLane2" class="form-control rounded-0"
-                     placeholder="Apt, floor (optional)">
+              <input type="text" name="addressLane2" value="<%= addData.addressLane2 || '' %>"
+                     class="form-control rounded-0" placeholder="Apt, floor (optional)">
             </div>
             <div class="col-md-4">
               <label class="form-label text-danger small fw-bold">CITY</label>
-              <input type="text" name="city" class="form-control rounded-0" required>
+              <input type="text" name="city" value="<%= addData.city || '' %>"
+                     class="form-control rounded-0 <%= addErrors.city ? 'is-invalid' : '' %>">
+              <% if (addErrors.city) { %><span class="field-error"><i class="fas fa-exclamation-circle me-1"></i><%= addErrors.city %></span><% } %>
             </div>
             <div class="col-md-4">
               <label class="form-label text-danger small fw-bold">STATE</label>
-              <input type="text" name="state" class="form-control rounded-0">
+              <input type="text" name="state" value="<%= addData.state || '' %>"
+                     class="form-control rounded-0 <%= addErrors.state ? 'is-invalid' : '' %>">
+              <% if (addErrors.state) { %><span class="field-error"><i class="fas fa-exclamation-circle me-1"></i><%= addErrors.state %></span><% } %>
             </div>
             <div class="col-md-4">
               <label class="form-label text-danger small fw-bold">COUNTRY</label>
-              <input type="text" name="country" class="form-control rounded-0">
+              <input type="text" name="country" value="<%= addData.country || '' %>"
+                     class="form-control rounded-0 <%= addErrors.country ? 'is-invalid' : '' %>">
+              <% if (addErrors.country) { %><span class="field-error"><i class="fas fa-exclamation-circle me-1"></i><%= addErrors.country %></span><% } %>
             </div>
           </div>
         </div>
@@ -369,6 +397,118 @@
     const form = document.getElementById('edit-' + id);
     form.classList.toggle('open');
   }
+
+  // ── Field validation rules ────────────────────────────────────────────────
+  function getFieldError(name, value) {
+    const v = (value || '').trim();
+    if (name === 'addressLane1') return v.length < 5 ? 'Address Line 1 must be at least 5 characters.' : '';
+    if (name === 'city') {
+      if (!v || v.length < 2) return 'City is required.';
+      if (!/^[a-zA-Z\s\-'.]+$/.test(v)) return 'City must contain only letters.';
+      return '';
+    }
+    if (name === 'state') {
+      if (v && !/^[a-zA-Z\s\-'.]+$/.test(v)) return 'State must contain only letters.';
+      return '';
+    }
+    if (name === 'country') {
+      if (v && !/^[a-zA-Z\s\-'.]+$/.test(v)) return 'Country must contain only letters.';
+      return '';
+    }
+    if (name === 'pincode') return !v ? 'Pincode is required.' : '';
+    return '';
+  }
+
+  function setFieldState(input, msg) {
+    let errEl = input.parentElement.querySelector('.live-field-err');
+    if (!errEl) {
+      errEl = document.createElement('span');
+      errEl.className = 'field-error live-field-err';
+      input.parentElement.appendChild(errEl);
+    }
+    if (msg) {
+      errEl.innerHTML = `<i class="fas fa-exclamation-circle me-1"></i>${msg}`;
+      input.classList.add('is-invalid');
+    } else {
+      errEl.innerHTML = '';
+      input.classList.remove('is-invalid');
+      input.classList.add('is-valid');
+    }
+  }
+
+  // Attach live validation to all relevant inputs in a given container
+  function wireFormValidation(container) {
+    const fields = ['addressLane1', 'city', 'state', 'country', 'pincode'];
+    fields.forEach(name => {
+      const input = container.querySelector(`[name="${name}"]`);
+      if (!input) return;
+      ['blur', 'input'].forEach(evt => {
+        input.addEventListener(evt, () => {
+          // Skip pincode on input event — it uses async API check
+          if (name === 'pincode' && evt === 'input') return;
+          setFieldState(input, getFieldError(name, input.value));
+        });
+      });
+    });
+  }
+
+  // ── Live pincode validation (async API) ───────────────────────────────────
+  async function checkPincode(pincodeInput, countryInput, msgEl) {
+    const pin  = pincodeInput.value.trim();
+    const ctry = countryInput.value.trim();
+    if (!pin) { setFieldState(pincodeInput, 'Pincode is required.'); return; }
+    if (!ctry) { msgEl && (msgEl.innerHTML = ''); return; }
+
+    msgEl.innerHTML = '<span style="color:#aaa;font-size:.75rem;"><i class="fas fa-spinner fa-spin me-1"></i>Validating…</span>';
+    pincodeInput.classList.remove('is-invalid', 'is-valid');
+
+    try {
+      const res  = await fetch(`/profile/address/validate-pincode?pincode=${encodeURIComponent(pin)}&country=${encodeURIComponent(ctry)}`);
+      const data = await res.json();
+      if (data.valid) {
+        msgEl.innerHTML = '<span style="color:#28a745;font-size:.75rem;"><i class="fas fa-check-circle me-1"></i>Valid postal code.</span>';
+        pincodeInput.classList.remove('is-invalid');
+        pincodeInput.classList.add('is-valid');
+      } else {
+        msgEl.innerHTML = `<span style="color:#ff4d4d;font-size:.75rem;"><i class="fas fa-exclamation-circle me-1"></i>${data.message}</span>`;
+        pincodeInput.classList.add('is-invalid');
+        pincodeInput.classList.remove('is-valid');
+      }
+    } catch (_) { msgEl.innerHTML = ''; }
+  }
+
+  function wirePincode(container) {
+    const pinEl  = container.querySelector('input[name="pincode"]');
+    const ctryEl = container.querySelector('input[name="country"]');
+    if (!pinEl || !ctryEl) return;
+    let msg = pinEl.parentElement.querySelector('.pincode-live-msg');
+    if (!msg) {
+      msg = document.createElement('div');
+      msg.className = 'pincode-live-msg';
+      pinEl.parentElement.appendChild(msg);
+    }
+    pinEl.addEventListener('blur',  () => checkPincode(pinEl, ctryEl, msg));
+    ctryEl.addEventListener('blur', () => { if (pinEl.value.trim()) checkPincode(pinEl, ctryEl, msg); });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    // Add Address Modal
+    const addModal = document.getElementById('addAddressModal');
+    if (addModal) {
+      wireFormValidation(addModal);
+      wirePincode(addModal);
+    }
+
+    // All inline Edit forms
+    document.querySelectorAll('.inline-edit-form').forEach(form => {
+      wireFormValidation(form);
+      wirePincode(form);
+    });
+
+    <% if (openModal) { %>
+      new bootstrap.Modal(document.getElementById('addAddressModal')).show();
+    <% } %>
+  });
 </script>
 
 <%- include('../../partials/footer') %>

@@ -1,0 +1,470 @@
+<%- include('../partials/admin-head') %>
+
+<body class="bg-black text-light">
+  <%- include('../partials/admin-sidebar') %>
+
+  <div class="main-content">
+    <%- include('../partials/admin-header') %>
+
+    <div class="admin-content p-4">
+
+      <% if (locals.error) { %>
+        <div class="alert alert-danger alert-dismissible fade show rounded-0">
+          <%= error %><button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      <% } %>
+
+      <!-- Page Title -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h4 class="mb-0 fw-bold" style="color:var(--admin-gold);">
+            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+          </h4>
+          <p class="text-white small mb-0">Welcome back — here's what's happening at Comizon.</p>
+        </div>
+        <span class="text-white small"><i class="fas fa-clock me-1"></i><%= new Date().toLocaleDateString('en-IN', { weekday:'long', year:'numeric', month:'long', day:'numeric' }) %></span>
+      </div>
+
+      <!-- ── STAT CARDS ──────────────────────────────────────────────────── -->
+      <div class="row g-3 mb-4">
+
+        <!-- Total Orders -->
+        <div class="col-xl-3 col-md-6">
+          <div class="rounded-0 p-4 h-100 d-flex align-items-center gap-3"
+               style="background:#1A1A1A; border:1px solid #333; border-left:4px solid var(--admin-gold);">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:56px;height:56px;background:rgba(255,215,0,.12);">
+              <i class="fas fa-shopping-bag fa-lg" style="color:var(--admin-gold);"></i>
+            </div>
+            <div>
+              <p class="mb-0 text-white small text-uppercase fw-bold" style="letter-spacing:1px;">Total Orders</p>
+              <h2 class="mb-0 fw-bold text-white"><%= totalOrders.toLocaleString() %></h2>
+              <p class="mb-0 text-white" style="font-size:.75rem;">All time orders placed</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Total Users -->
+        <div class="col-xl-3 col-md-6">
+          <div class="rounded-0 p-4 h-100 d-flex align-items-center gap-3"
+               style="background:#1A1A1A; border:1px solid #333; border-left:4px solid #17a2b8;">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:56px;height:56px;background:rgba(23,162,184,.12);">
+              <i class="fas fa-users fa-lg" style="color:#17a2b8;"></i>
+            </div>
+            <div>
+              <p class="mb-0 text-white small text-uppercase fw-bold" style="letter-spacing:1px;">Registered Users</p>
+              <h2 class="mb-0 fw-bold text-white"><%= totalUsers.toLocaleString() %></h2>
+              <p class="mb-0 text-white" style="font-size:.75rem;">Excluding admin accounts</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Total Products -->
+        <div class="col-xl-3 col-md-6">
+          <div class="rounded-0 p-4 h-100 d-flex align-items-center gap-3"
+               style="background:#1A1A1A; border:1px solid #333; border-left:4px solid #28a745;">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:56px;height:56px;background:rgba(40,167,69,.12);">
+              <i class="fas fa-box-open fa-lg" style="color:#28a745;"></i>
+            </div>
+            <div>
+              <p class="mb-0 text-white small text-uppercase fw-bold" style="letter-spacing:1px;">Active Products</p>
+              <h2 class="mb-0 fw-bold text-white"><%= totalProducts.toLocaleString() %></h2>
+              <p class="mb-0 text-white" style="font-size:.75rem;">Listed in the store</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Total Revenue -->
+        <div class="col-xl-3 col-md-6">
+          <div class="rounded-0 p-4 h-100 d-flex align-items-center gap-3"
+               style="background:#1A1A1A; border:1px solid #333; border-left:4px solid #E63946;">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:56px;height:56px;background:rgba(230,57,70,.12);">
+              <i class="fas fa-dollar-sign fa-lg" style="color:#E63946;"></i>
+            </div>
+            <div>
+              <p class="mb-0 text-white small text-uppercase fw-bold" style="letter-spacing:1px;">Total Revenue</p>
+              <h2 class="mb-0 fw-bold text-white">$<%= Number(totalRevenue).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',') %></h2>
+              <p class="mb-0 text-white" style="font-size:.75rem;">Current Revenue</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── SECOND ROW: Categories + Order Status ───────────────────────── -->
+      <div class="row g-3 mb-4">
+
+        <!-- Total Categories -->
+        <div class="col-xl-3 col-md-6">
+          <div class="rounded-0 p-4 h-100 d-flex align-items-center gap-3"
+               style="background:#1A1A1A; border:1px solid #333; border-left:4px solid #6f42c1;">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:56px;height:56px;background:rgba(111,66,193,.12);">
+              <i class="fas fa-tags fa-lg" style="color:#6f42c1;"></i>
+            </div>
+            <div>
+              <p class="mb-0 text-white small text-uppercase fw-bold" style="letter-spacing:1px;">Active Categories</p>
+              <h2 class="mb-0 fw-bold text-white"><%= totalCategories.toLocaleString() %></h2>
+              <p class="mb-0 text-white" style="font-size:.75rem;">Product groupings</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pending Orders -->
+        <div class="col-xl-3 col-md-6">
+          <div class="rounded-0 p-4 h-100 d-flex align-items-center gap-3"
+               style="background:#1A1A1A; border:1px solid #333; border-left:4px solid #ffc107;">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:56px;height:56px;background:rgba(255,193,7,.12);">
+              <i class="fas fa-hourglass-half fa-lg" style="color:#ffc107;"></i>
+            </div>
+            <div>
+              <p class="mb-0 text-white small text-uppercase fw-bold" style="letter-spacing:1px;">Pending Orders</p>
+              <h2 class="mb-0 fw-bold text-white"><%= (statusMap['pending'] || 0).toLocaleString() %></h2>
+              <p class="mb-0 text-white" style="font-size:.75rem;">Awaiting processing</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Delivered Orders -->
+        <div class="col-xl-3 col-md-6">
+          <div class="rounded-0 p-4 h-100 d-flex align-items-center gap-3"
+               style="background:#1A1A1A; border:1px solid #333; border-left:4px solid #20c997;">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:56px;height:56px;background:rgba(32,201,151,.12);">
+              <i class="fas fa-check-circle fa-lg" style="color:#20c997;"></i>
+            </div>
+            <div>
+              <p class="mb-0 text-white small text-uppercase fw-bold" style="letter-spacing:1px;">Delivered Orders</p>
+              <h2 class="mb-0 fw-bold text-white"><%= (statusMap['delivered'] || 0).toLocaleString() %></h2>
+              <p class="mb-0 text-white" style="font-size:.75rem;">Successfully fulfilled</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cancelled Orders -->
+        <div class="col-xl-3 col-md-6">
+          <div class="rounded-0 p-4 h-100 d-flex align-items-center gap-3"
+               style="background:#1A1A1A; border:1px solid #333; border-left:4px solid #dc3545;">
+            <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                 style="width:56px;height:56px;background:rgba(220,53,69,.12);">
+              <i class="fas fa-times-circle fa-lg" style="color:#dc3545;"></i>
+            </div>
+            <div>
+              <p class="mb-0 text-white small text-uppercase fw-bold" style="letter-spacing:1px;">Cancelled Orders</p>
+              <h2 class="mb-0 fw-bold text-white"><%= (statusMap['cancelled'] || 0).toLocaleString() %></h2>
+              <p class="mb-0 text-white" style="font-size:.75rem;">By user or admin</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── CHARTS ROW ──────────────────────────────────────────────────── -->
+      <div class="row g-3 mb-4">
+
+        <!-- Revenue Line Chart -->
+        <div class="col-lg-8">
+          <div class="rounded-0 p-4" style="background:#1A1A1A; border:1px solid #333;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <div>
+                <h6 class="fw-bold mb-0" style="color:var(--admin-gold);">
+                  <i class="fas fa-chart-line me-2"></i>Revenue — Last 7 Days
+                </h6>
+                <p class="text-white small mb-0">Daily sales revenue trend</p>
+              </div>
+              <a href="/admin/sales" class="btn btn-outline-warning btn-sm rounded-0" style="font-size:.75rem;">
+                Full Report <i class="fas fa-arrow-right ms-1"></i>
+              </a>
+            </div>
+            <canvas id="revenueChart" height="100"></canvas>
+          </div>
+        </div>
+
+        <!-- Order Status Doughnut -->
+        <div class="col-lg-4">
+          <div class="rounded-0 p-4" style="background:#1A1A1A; border:1px solid #333;">
+            <h6 class="fw-bold mb-0" style="color:var(--admin-gold);">
+              <i class="fas fa-chart-pie me-2"></i>Order Status
+            </h6>
+            <p class="text-white small mb-3">Breakdown by current status</p>
+            <canvas id="statusChart" height="200"></canvas>
+            <div class="mt-3 d-flex flex-wrap gap-2 justify-content-center" style="font-size:.72rem;">
+              <span><span style="display:inline-block;width:10px;height:10px;background:#ffc107;border-radius:2px;" class="me-1"></span>Pending</span>
+              <span><span style="display:inline-block;width:10px;height:10px;background:#17a2b8;border-radius:2px;" class="me-1"></span>Processing</span>
+              <span><span style="display:inline-block;width:10px;height:10px;background:#20c997;border-radius:2px;" class="me-1"></span>Delivered</span>
+              <span><span style="display:inline-block;width:10px;height:10px;background:#E63946;border-radius:2px;" class="me-1"></span>Cancelled</span>
+              <span><span style="display:inline-block;width:10px;height:10px;background:#6f42c1;border-radius:2px;" class="me-1"></span>Other</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── TOP PRODUCTS + TOP CATEGORIES ─────────────────────────────── -->
+      <div class="row g-3 mb-4">
+
+        <!-- Most Sold Products -->
+        <div class="col-lg-6">
+          <div class="rounded-0 p-4" style="background:#1A1A1A; border:1px solid #333;">
+            <h6 class="fw-bold mb-3" style="color:var(--admin-gold);">
+              <i class="fas fa-fire me-2"></i>Top Selling Products
+            </h6>
+            <% if (mostSoldProducts.length === 0) { %>
+              <p class="text-white small">No sales data yet.</p>
+            <% } else { %>
+              <% mostSoldProducts.forEach((prod, idx) => { %>
+                <div class="d-flex align-items-center gap-3 mb-3">
+                  <span class="fw-bold" style="width:20px; color:var(--admin-gold); font-size:.85rem;">#<%= idx+1 %></span>
+                  <% if (prod.image) { %>
+                    <img src="<%= prod.image %>" style="width:40px;height:55px;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">
+                  <% } else { %>
+                    <div style="width:40px;height:55px;background:#2a2a2a;flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+                      <i class="fas fa-book text-white small"></i>
+                    </div>
+                  <% } %>
+                  <div class="flex-grow-1 overflow-hidden">
+                    <p class="mb-0 small fw-semibold text-white text-truncate"><%= prod.name %></p>
+                    <div class="d-flex gap-3 mt-1">
+                      <span class="text-white" style="font-size:.72rem;"><i class="fas fa-box me-1"></i><%= prod.totalSold %> units sold</span>
+                      <span style="font-size:.72rem; color:#20c997;"><i class="fas fa-dollar-sign me-1"></i><%= Number(prod.revenue).toFixed(2) %></span>
+                    </div>
+                  </div>
+                  <!-- Mini bar -->
+                  <div style="width:60px;">
+                    <div style="height:6px;background:#333;border-radius:3px;overflow:hidden;">
+                      <div style="height:100%;background:var(--admin-gold);border-radius:3px;width:<%= Math.min(100, (prod.totalSold / (mostSoldProducts[0]?.totalSold || 1)) * 100) %>%;"></div>
+                    </div>
+                  </div>
+                </div>
+              <% }) %>
+            <% } %>
+          </div>
+        </div>
+
+        <!-- Most Sold Categories -->
+        <div class="col-lg-6">
+          <div class="rounded-0 p-4" style="background:#1A1A1A; border:1px solid #333;">
+            <h6 class="fw-bold mb-3" style="color:var(--admin-gold);">
+              <i class="fas fa-trophy me-2"></i>Top Selling Categories
+            </h6>
+            <% if (mostSoldCategories.length === 0) { %>
+              <p class="text-white small">No sales data yet.</p>
+            <% } else { %>
+              <% mostSoldCategories.forEach((cat, idx) => { %>
+                <div class="d-flex align-items-center gap-3 mb-3">
+                  <span class="fw-bold" style="width:20px; color:var(--admin-gold); font-size:.85rem;">#<%= idx+1 %></span>
+                  <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                       style="width:40px;height:40px;background:rgba(255,215,0,.1);">
+                    <i class="fas fa-tags" style="color:var(--admin-gold);font-size:.85rem;"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <p class="mb-0 small fw-semibold text-white"><%= cat.name || 'Uncategorised' %></p>
+                    <span class="text-white" style="font-size:.72rem;"><i class="fas fa-box me-1"></i><%= cat.totalSold %> units sold</span>
+                  </div>
+                  <div style="width:80px;">
+                    <div style="height:6px;background:#333;border-radius:3px;overflow:hidden;">
+                      <div style="height:100%;background:#6f42c1;border-radius:3px;width:<%= Math.min(100,(cat.totalSold/(mostSoldCategories[0]?.totalSold||1))*100) %>%;"></div>
+                    </div>
+                    <p class="text-white mb-0 text-end" style="font-size:.68rem;"><%= Math.round((cat.totalSold/(mostSoldCategories[0]?.totalSold||1))*100) %>%</p>
+                  </div>
+                </div>
+              <% }) %>
+            <% } %>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── REVIEW HIGHLIGHTS + RECENT ORDERS ─────────────────────────── -->
+      <div class="row g-3 mb-4">
+
+        <!-- Best reviewed -->
+        <div class="col-lg-3 col-md-6">
+          <div class="rounded-0 p-4 h-100" style="background:#1A1A1A; border:1px solid #333; border-top:3px solid #20c997;">
+            <h6 class="fw-bold mb-3" style="color:#20c997;">
+              <i class="fas fa-thumbs-up me-2"></i>Most Loved
+            </h6>
+            <% if (bestReviewed) { %>
+              <% if (bestReviewed.images && bestReviewed.images[0]) { %>
+                <img src="<%= bestReviewed.images[0] %>" class="w-100 mb-2" style="height:120px;object-fit:cover;">
+              <% } %>
+              <p class="small fw-semibold text-white mb-1 text-truncate"><%= bestReviewed.productName %></p>
+              <div class="d-flex align-items-center gap-1">
+                <% const bRating = bestReviewed.reviewStat?.averageRating || 0; %>
+                <% for(let i=0;i<Math.round(bRating);i++) { %><i class="fas fa-star text-warning" style="font-size:.7rem;"></i><% } %>
+                <% for(let i=Math.round(bRating);i<5;i++) { %><i class="far fa-star text-warning" style="font-size:.7rem;"></i><% } %>
+                <span class="text-warning small fw-bold ms-1"><%= bRating.toFixed(1) %></span>
+              </div>
+              <p class="text-white mb-0" style="font-size:.72rem;"><%= bestReviewed.reviewStat?.totalReviews %> reviews</p>
+            <% } else { %>
+              <p class="text-white small">No reviews yet.</p>
+            <% } %>
+          </div>
+        </div>
+
+        <!-- Worst reviewed -->
+        <div class="col-lg-3 col-md-6">
+          <div class="rounded-0 p-4 h-100" style="background:#1A1A1A; border:1px solid #333; border-top:3px solid #E63946;">
+            <h6 class="fw-bold mb-3" style="color:#E63946;">
+              <i class="fas fa-thumbs-down me-2"></i>Needs Attention
+            </h6>
+            <% if (worstReviewed) { %>
+              <% if (worstReviewed.images && worstReviewed.images[0]) { %>
+                <img src="<%= worstReviewed.images[0] %>" class="w-100 mb-2" style="height:120px;object-fit:cover;">
+              <% } %>
+              <p class="small fw-semibold text-white mb-1 text-truncate"><%= worstReviewed.productName %></p>
+              <div class="d-flex align-items-center gap-1">
+                <% const wRating = worstReviewed.reviewStat?.averageRating || 0; %>
+                <% for(let i=0;i<Math.round(wRating);i++) { %><i class="fas fa-star text-warning" style="font-size:.7rem;"></i><% } %>
+                <% for(let i=Math.round(wRating);i<5;i++) { %><i class="far fa-star text-warning" style="font-size:.7rem;"></i><% } %>
+                <span class="text-warning small fw-bold ms-1"><%= wRating.toFixed(1) %></span>
+              </div>
+              <p class="text-white mb-0" style="font-size:.72rem;"><%= worstReviewed.reviewStat?.totalReviews %> reviews</p>
+            <% } else { %>
+              <p class="text-white small">No reviews yet.</p>
+            <% } %>
+          </div>
+        </div>
+
+        <!-- Recent Orders -->
+        <div class="col-lg-6">
+          <div class="rounded-0 p-4 h-100" style="background:#1A1A1A; border:1px solid #333;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="fw-bold mb-0" style="color:var(--admin-gold);">
+                <i class="fas fa-receipt me-2"></i>Recent Orders
+              </h6>
+              <a href="/admin/orders" class="btn btn-outline-warning btn-sm rounded-0" style="font-size:.72rem;">View All</a>
+            </div>
+            <% if (recentOrders.length === 0) { %>
+              <p class="text-white small">No orders yet.</p>
+            <% } else { %>
+              <div style="max-height:280px; overflow-y:auto;">
+                <% recentOrders.forEach(o => { %>
+                  <%
+                    const sc = o.status === 'delivered' ? '#20c997'
+                             : o.status === 'cancelled' ? '#E63946'
+                             : o.status === 'pending'   ? '#ffc107'
+                             : '#17a2b8';
+                  %>
+                  <div class="d-flex justify-content-between align-items-center py-2" style="border-bottom:1px solid #2a2a2a;">
+                    <div>
+                      <p class="mb-0 small fw-semibold text-white"
+                         style="font-family:monospace; font-size:.78rem;"><%= o.orderId || o._id.toString().slice(-8).toUpperCase() %></p>
+                      <p class="mb-0 text-white" style="font-size:.72rem;">
+                        <%= o.userId ? `${o.userId.firstName} ${o.userId.lastName}` : 'Guest' %>
+                        · <%= new Date(o.orderedAt).toLocaleDateString('en-IN') %>
+                      </p>
+                    </div>
+                    <div class="text-end">
+                      <p class="mb-0 small fw-bold" style="color:var(--admin-gold);">$<%= o.total.toFixed(2) %></p>
+                      <span class="fw-bold text-uppercase" style="font-size:.65rem; color:<%= sc %>;">
+                        <%= o.status.replace(/_/g,' ') %>
+                      </span>
+                    </div>
+                  </div>
+                <% }) %>
+              </div>
+            <% } %>
+          </div>
+        </div>
+
+      </div>
+
+    </div><!-- /admin-content -->
+  </div><!-- /main-content -->
+
+</body>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const CHART_LABELS  = <%- chartLabels %>;
+const CHART_REVENUE = <%- chartRevenue %>;
+const CHART_ORDERS  = <%- chartOrders %>;
+
+// ── Revenue line chart ────────────────────────────────────────────────────────
+new Chart(document.getElementById('revenueChart'), {
+  type: 'line',
+  data: {
+    labels: CHART_LABELS,
+    datasets: [
+      {
+        label: 'Revenue ($)',
+        data:  CHART_REVENUE,
+        borderColor:     '#FFD700',
+        backgroundColor: 'rgba(255,215,0,0.08)',
+        borderWidth: 2,
+        pointBackgroundColor: '#FFD700',
+        pointRadius: 4,
+        fill: true,
+        tension: 0.4,
+        yAxisID: 'y',
+      },
+      {
+        label: 'Orders',
+        data:  CHART_ORDERS,
+        borderColor:     '#E63946',
+        backgroundColor: 'rgba(230,57,70,0.05)',
+        borderWidth: 2,
+        pointBackgroundColor: '#E63946',
+        pointRadius: 4,
+        fill: false,
+        tension: 0.4,
+        yAxisID: 'y1',
+      },
+    ],
+  },
+  options: {
+    responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { labels: { color: '#aaa', font: { size: 11 } } },
+    },
+    scales: {
+      x:  { ticks: { color: '#aaa' }, grid: { color: '#222' } },
+      y:  { ticks: { color: '#aaa', callback: v => '$' + v }, grid: { color: '#222' }, position: 'left' },
+      y1: { ticks: { color: '#aaa' }, grid: { drawOnChartArea: false }, position: 'right' },
+    },
+  },
+});
+
+// ── Order status doughnut ─────────────────────────────────────────────────────
+const statusMap = <%- JSON.stringify(statusMap) %>;
+const STATUS_KEYS   = ['pending','processing','delivered','cancelled'];
+const STATUS_LABELS = ['Pending','Processing','Delivered','Cancelled'];
+const STATUS_COLORS = ['#ffc107','#17a2b8','#20c997','#E63946'];
+const otherCount = Object.entries(statusMap)
+  .filter(([k]) => !STATUS_KEYS.includes(k))
+  .reduce((s,[,v]) => s + v, 0);
+
+new Chart(document.getElementById('statusChart'), {
+  type: 'doughnut',
+  data: {
+    labels: [...STATUS_LABELS, 'Other'],
+    datasets: [{
+      data:            [...STATUS_KEYS.map(k => statusMap[k] || 0), otherCount],
+      backgroundColor: [...STATUS_COLORS, '#6f42c1'],
+      borderWidth: 0,
+      hoverOffset: 6,
+    }],
+  },
+  options: {
+    responsive: true,
+    cutout: '68%',
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` ${ctx.label}: ${ctx.raw} orders`,
+        },
+      },
+    },
+  },
+});
+</script>
+
+</html>

@@ -9,7 +9,8 @@ export async function getProductById(id) {
     const product = await Product.findById(id)
         .populate('categoryId', 'categoryName isPremium')
         .lean();
-    if (!product || !product.isActive) return null;
+    if (!product) return null;
+    
     return product;
 }
 

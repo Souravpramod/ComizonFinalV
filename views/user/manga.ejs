@@ -53,27 +53,7 @@ Browse All
 </header>
 
 
-<!-- CATEGORY PILLS -->
-<section class="py-3 border-bottom border-secondary" style="background:#0d0d0d;">
-<div class="container">
 
-<div class="d-flex flex-wrap gap-2">
-
-<% categories.forEach(cat => { %>
-
-<a href="/manga?category=<%= cat.key %>&page=1&sort=<%= sort %>&search=<%= encodeURIComponent(search) %>"
-class="category-pill <%= activeCategory === cat.key ? 'active' : '' %>">
-
-<%= cat.label %>
-
-</a>
-
-<% }) %>
-
-</div>
-
-</div>
-</section>
 
 
 
@@ -223,7 +203,7 @@ id="sort-select">
 
 <% displayProducts.forEach(p => { %>
 
-<div class="col-md-4">
+<div class="col-md-4" data-product-id="<%= p._id %>">
 
 <div class="card product-card h-100 bg-transparent border border-secondary rounded-0"
 onclick="location.href='/product/<%= p._id %>'"
@@ -236,11 +216,12 @@ onerror="this.src='https://placehold.co/300x450/1a1a1a/E63946?text=No+Image'"
 class="card-img-top"
 alt="<%= p.name %>">
 
-<form action="/wishlist/add/<%= p._id %>" method="POST" onclick="event.stopPropagation()">
-<button type="submit" class="btn btn-light btn-sm position-absolute top-0 end-0 m-2 rounded-circle wishlist-btn" title="Add to Wishlist">
-<i class="far fa-heart text-danger"></i>
-</button>
-</form>
+<% const inWishlist = (locals.wishlistIds || []).includes(p._id.toString()); %>
+                          <form action="/wishlist/add/<%= p._id %>" method="POST" onclick="event.stopPropagation()">
+                            <button type="submit" class="btn btn-light btn-sm position-absolute top-0 end-0 m-2 rounded-circle wishlist-btn" title="<%= inWishlist ? 'In Wishlist' : 'Add to Wishlist' %>">
+                              <i class="<%= inWishlist ? 'fas' : 'far' %> fa-heart text-danger"></i>
+                            </button>
+                          </form>
 
 <% if (p.badge) { %>
 
@@ -281,10 +262,28 @@ alt="<%= p.name %>">
 
 <div class="d-flex justify-content-between align-items-center mt-3">
 
-<h4 class="text-white mb-0">$<%= Number(p.price).toFixed(2) %></h4>
+<div>
+  <% if (p.effectivePrice && p.effectivePrice < p.price) { %>
+    <div class="text-white-50 text-decoration-line-through" data-original-price style="font-size:.8rem; line-height:1.2;">
+      $<%= Number(p.price).toFixed(2) %>
+    </div>
+    <h4 class="mb-0 text-white" data-price data-effective-price="<%= p.effectivePrice %>">$<%= Number(p.effectivePrice).toFixed(2) %></h4>
+    <div class="mt-1">
+      <span class="fw-bold" data-offer-badge style="font-size:.72rem; color:<%= p.badgeColorListing || '#E63946' %>;">
+        <i class="fas fa-tag me-1"></i><%= p.offerBadge %>
+      </span>
+    </div>
+  <% } else { %>
+    <div class="text-white-50 text-decoration-line-through" data-original-price style="font-size:.8rem; line-height:1.2; display:none;"></div>
+    <h4 class="text-white mb-0" data-price data-effective-price="<%= p.price %>">$<%= Number(p.price).toFixed(2) %></h4>
+    <div class="mt-1">
+      <span class="fw-bold" data-offer-badge style="font-size:.72rem; color:#E63946; display:none;"></span>
+    </div>
+  <% } %>
+</div>
 
 <form action="/cart/add/<%= p._id %>" method="POST" onclick="event.stopPropagation()">
-<button type="submit" class="btn btn-outline-danger btn-sm rounded-0">
+<button type="submit" class="btn btn-outline-danger btn-sm rounded-0" data-add-cart-btn>
 <i class="fas fa-cart-plus"></i> Add
 </button>
 </form>
@@ -387,7 +386,7 @@ Next
   };
 </script>
 <script src="/js/user/listing-ajax.js"></script>
-
+<%- include('../partials/offer-poller') %>
 
 </body>
 </html>

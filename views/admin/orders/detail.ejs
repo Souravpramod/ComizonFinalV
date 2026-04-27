@@ -34,7 +34,7 @@
         </div>
         <div class="ms-auto">
           <!-- Overall status badge -->
-          <% const sc = {pending:'warning',processing:'info',shipped:'primary',out_for_delivery:'info',delivered:'success',cancelled:'danger'}; %>
+          <% const sc = {pending:'warning',processing:'info',shipped:'primary',out_for_delivery:'info',delivered:'success',cancelled:'danger',return_requested:'warning',returned:'secondary',failed:'danger'}; %>
           <span class="badge bg-<%= sc[order.status]||'secondary' %> fs-6 px-3 py-2" id="overallBadge">
             <%= order.status.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) %>
           </span>
@@ -52,13 +52,14 @@
               <div class="d-flex align-items-center gap-2">
                 <label class="text-info small mb-0">Overall:</label>
                 <%
-                  const isOrderLocked = ['cancelled','delivered','return_requested','returned'].includes(order.status);
+                  const isOrderLocked = ['cancelled','delivered','return_requested','returned','failed'].includes(order.status);
                 %>
                 <% if (isOrderLocked) { %>
                   <%
                     const lockedColor = order.status === 'delivered'        ? 'success'
                                       : order.status === 'return_requested' ? 'warning'
                                       : order.status === 'returned'         ? 'info'
+                                      : order.status === 'failed'           ? 'danger'
                                       :                                       'danger';
                   %>
                   <span class="badge bg-<%= lockedColor %> px-3 py-2">
@@ -66,7 +67,7 @@
                   </span>
                 <% } else { %>
                   <select class="form-select form-select-sm bg-dark text-light border-secondary" id="overallStatusSel" style="width:180px;">
-                    <% ['pending','processing','shipped','out_for_delivery','delivered','cancelled','return_requested','returned'].forEach(s=>{ %>
+                    <% ['pending','processing','shipped','out_for_delivery','delivered','cancelled','return_requested','returned', 'failed'].forEach(s=>{ %>
                       <option value="<%= s %>" <%= order.status===s?'selected':'' %> style="background:#1a1a1a;">
                         <%= s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) %>
                       </option>
@@ -121,12 +122,51 @@
                               </span>
                             </td>
                             <td>
-                              <% const unitLocked = ['cancelled','delivered','return_requested'].includes(order.status) || ['cancelled','return_requested','returned'].includes(item.itemStatus); %>
-                              <% if (unitLocked) { %>
-                                <span class="badge bg-<%= u.status==='cancelled'?'danger':u.status==='delivered'?'success':'warning' %> px-2 py-1">
+                              <%
+                                // Hard-locked: no changes allowed at all
+                                const unitHardLocked =
+                                  ['cancelled','delivered','return_requested','returned','failed'].includes(u.status) ||
+                                  ['cancelled','delivered','return_requested','returned','failed'].includes(item.itemStatus) ||
+                                  ['cancelled','delivered','return_requested','returned','failed'].includes(order.status);
+
+                                // Soft-locked: out_for_delivery — only 'delivered' is allowed forward
+                                const unitOfdLocked =
+                                  !unitHardLocked && (
+                                    u.status === 'out_for_delivery' ||
+                                    item.itemStatus === 'out_for_delivery' ||
+                                    order.status === 'out_for_delivery'
+                                  );
+
+                                const unitLockColor =
+                                  u.status === 'delivered'        ? 'success'
+                                : u.status === 'cancelled'        ? 'danger'
+                                : u.status === 'returned'         ? 'secondary'
+                                : u.status === 'return_requested' ? 'warning'
+                                : u.status === 'failed'           ? 'danger'
+                                : u.status === 'out_for_delivery' ? 'warning'
+                                :                                   'secondary';
+                              %>
+                              <% if (unitHardLocked) { %>
+                                <span class="badge bg-<%= unitLockColor %> px-2 py-1">
                                   <%= u.status.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) %>
                                   <i class="fas fa-lock ms-1" style="font-size:.6rem;opacity:.7;"></i>
                                 </span>
+                              <% } else if (unitOfdLocked) { %>
+                                <!-- out_for_delivery: semi-lock, only delivered allowed -->
+                                <div class="d-flex align-items-center gap-1 flex-wrap">
+                                  <span class="badge bg-warning text-dark px-2 py-1">
+                                    Out For Delivery
+                                    <i class="fas fa-lock ms-1" style="font-size:.6rem;opacity:.8;"></i>
+                                  </span>
+                                  <button class="btn btn-sm btn-outline-success ms-1 unit-save-btn"
+                                          data-order-id="<%= order._id %>"
+                                          data-item-id="<%= item._id %>"
+                                          data-unit-index="<%= u.unitIndex %>"
+                                          data-force-status="delivered"
+                                          title="Mark as Delivered">
+                                    <i class="fas fa-check me-1"></i> Delivered
+                                  </button>
+                                </div>
                               <% } else { %>
                                 <select class="form-select form-select-sm bg-dark text-light border-secondary unit-status-sel"
                                         style="width:150px;display:inline-block;"
@@ -214,7 +254,7 @@
                 <span class="text-warning">$<%= order.total.toFixed(2) %></span>
               </div>
               <div class="mt-3">
-                <% const pc = {pending:'warning',paid:'success',refunded:'info'}; %>
+                <% const pc = {pending:'warning',paid:'success',refunded:'info',failed:'danger'}; %>
                 <span class="badge bg-<%= pc[order.paymentStatus]||'secondary' %>">
                   Payment: <%= order.paymentStatus.charAt(0).toUpperCase()+order.paymentStatus.slice(1) %>
                 </span>
@@ -231,16 +271,77 @@
 </body>
 
 <script>
+
+
+  function showToast(msg, type='danger') {
+    const id = 'toast_' + Date.now();
+    const bg = type === 'success' ? 'bg-success' : type === 'warning' ? 'bg-warning text-dark' : 'bg-danger';
+    const el = document.createElement('div');
+    el.id = id;
+    el.className = `toast align-items-center text-white border-0 ${bg} position-fixed rounded-0`;
+    el.style.cssText = 'top:80px;right:20px;z-index:9999;min-width:280px;';
+    el.setAttribute('role','alert');
+    el.innerHTML = `<div class="d-flex"><div class="toast-body fw-semibold">${msg}</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+    document.body.appendChild(el);
+    const t = new bootstrap.Toast(el, { delay: 4000 });
+    t.show();
+    el.addEventListener('hidden.bs.toast', () => el.remove());
+}
 const ORDER_ID = '<%= order._id %>';
 
+// ── Unit status select: warn on change before Save ────────────────────────────
+// Status progression order — used to detect backward/invalid moves
+const STATUS_ORDER = ['pending','processing','shipped','out_for_delivery','delivered'];
+
+document.querySelectorAll('.unit-status-sel').forEach(sel => {
+  // Store original on the element itself so it survives DOM reuse
+  if (!sel.dataset.originalStatus) sel.dataset.originalStatus = sel.value;
+
+  sel.addEventListener('change', function () {
+    const chosen  = this.value;
+    const current = this.dataset.originalStatus || this.value;
+
+    // Warn if trying to go backwards from out_for_delivery
+    if (current === 'out_for_delivery' && chosen !== 'delivered') {
+      showToast(
+        '⚠️ This unit is Out for Delivery — it can only be advanced to Delivered. Other changes will be rejected.',
+        'warning'
+      );
+      return;
+    }
+
+    // Warn if trying to go backwards in progression
+    const curIdx = STATUS_ORDER.indexOf(current);
+    const newIdx = STATUS_ORDER.indexOf(chosen);
+    if (curIdx !== -1 && newIdx !== -1 && newIdx < curIdx) {
+      showToast(
+        `⚠️ Moving from "${current.replace(/_/g,' ')}" back to "${chosen.replace(/_/g,' ')}" is not allowed. The backend will reject this.`,
+        'warning'
+      );
+    }
+  });
+});
+
 // ── Unit save button ──────────────────────────────────────────────────────────
-document.querySelectorAll('.unit-save-btn').forEach(btn => {
-  btn.addEventListener('click', async function () {
+async function unitSaveBtnHandler() {
+  const btn = this;
     const itemId    = this.dataset.itemId;
     const unitIndex = this.dataset.unitIndex;
     const row       = this.closest('tr');
-    const sel       = row.querySelector('.unit-status-sel');
-    const status    = sel.value;
+    // data-force-status is set on the OFD → Delivered button; otherwise read the select
+    const status    = this.dataset.forceStatus || row.querySelector('.unit-status-sel')?.value;
+    if (!status) return;
+
+ // Guard: block the save immediately if this unit is OFD and target isn't delivered
+    const sel = row.querySelector('.unit-status-sel');
+    if (sel) {
+      const originalStatus = sel.dataset.originalStatus || '';
+      if (originalStatus === 'out_for_delivery' && status !== 'delivered') {
+        showToast('⚠️ This unit is Out for Delivery — only "Delivered" is a valid next status.', 'warning');
+        return;
+      }
+    }
 
     try {
       const res  = await fetch(`/admin/orders/${ORDER_ID}/items/${itemId}/units/${unitIndex}/status`, {
@@ -251,25 +352,114 @@ document.querySelectorAll('.unit-save-btn').forEach(btn => {
       const data = await res.json();
 
       if (data.ok) {
-        // Update badge
+        // 1. Update the status badge in the Status column
         const badge = row.querySelector('.unit-status-badge');
         const label = status.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
         badge.textContent = label;
         badge.className = `badge unit-status-badge bg-${statusColor(status)}`;
 
-        // Update overall badge
+        // 2. Update overall order badge (top-right)
         const ob = document.getElementById('overallBadge');
-        ob.textContent = data.orderStatus.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
-        ob.className = `badge fs-6 px-3 py-2 bg-${statusColor(data.orderStatus)}`;
+        const orderStatus = data.orderStatus;
+        const orderLabel  = orderStatus.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+        ob.textContent = orderLabel;
+        ob.className   = `badge fs-6 px-3 py-2 bg-${statusColor(orderStatus)}`;
+
+        // 2b. If the order-level status has now become locked/OFD, swap the Overall control too
+        const ORDER_HARD_LOCKED = ['cancelled','delivered','return_requested','returned','failed'];
+        const overallSel = document.getElementById('overallStatusSel');
+        if (overallSel) {
+          const overallWrap = overallSel.closest('.d-flex.align-items-center.gap-2');
+          if (overallWrap) {
+            if (ORDER_HARD_LOCKED.includes(orderStatus)) {
+              const lockColor = orderStatus === 'delivered'        ? 'success'
+                              : orderStatus === 'return_requested' ? 'warning'
+                              : orderStatus === 'returned'         ? 'info'
+                              : orderStatus === 'failed'           ? 'danger'
+                              :                                      'danger';
+              overallWrap.innerHTML = `
+                <label class="text-info small mb-0">Overall:</label>
+                <span class="badge bg-${lockColor} px-3 py-2">
+                  ${orderLabel} — Locked
+                </span>`;
+            } else if (orderStatus === 'out_for_delivery') {
+              overallWrap.innerHTML = `
+                <label class="text-info small mb-0">Overall:</label>
+                <span class="badge bg-warning text-dark px-3 py-2">
+                  Out For Delivery
+                  <i class="fas fa-lock ms-1" style="font-size:.6rem;opacity:.8;"></i>
+                </span>`;
+            } else {
+              // Still editable — just sync the select value
+              overallSel.value = orderStatus;
+            }
+          }
+        }
+
+        // 3. Replace the Action cell live — no reload needed
+        const actionCell = row.querySelector('td:last-child');
+        const HARD_LOCKED = ['cancelled','delivered','return_requested','returned','failed'];
+
+        if (HARD_LOCKED.includes(status)) {
+          // Fully locked — show lock badge only
+          const lockColor = status === 'delivered'        ? 'success'
+                          : status === 'cancelled'        ? 'danger'
+                          : status === 'returned'         ? 'secondary'
+                          : status === 'return_requested' ? 'warning'
+                          : status === 'failed'           ? 'danger'
+                          :                                 'secondary';
+          actionCell.innerHTML = `
+            <span class="badge bg-${lockColor} px-2 py-1">
+              ${label}
+              <i class="fas fa-lock ms-1" style="font-size:.6rem;opacity:.7;"></i>
+            </span>`;
+
+        } else if (status === 'out_for_delivery') {
+          // OFD semi-lock — show amber badge + Delivered button
+          const orderId   = btn.dataset.orderId;
+          const itemId    = btn.dataset.itemId;
+          const unitIndex = btn.dataset.unitIndex;
+          actionCell.innerHTML = `
+            <div class="d-flex align-items-center gap-1 flex-wrap">
+              <span class="badge bg-warning text-dark px-2 py-1">
+                Out For Delivery
+                <i class="fas fa-lock ms-1" style="font-size:.6rem;opacity:.8;"></i>
+              </span>
+              <button class="btn btn-sm btn-outline-success ms-1 unit-save-btn"
+                      data-order-id="${orderId}"
+                      data-item-id="${itemId}"
+                      data-unit-index="${unitIndex}"
+                      data-force-status="delivered"
+                      title="Mark as Delivered">
+                <i class="fas fa-check me-1"></i> Delivered
+              </button>
+            </div>`;
+          // Re-attach click listener to the newly injected button
+          actionCell.querySelector('.unit-save-btn').addEventListener('click', unitSaveBtnHandler);
+
+        } else {
+          // Still editable — keep dropdown but update its selected value
+          const sel = actionCell.querySelector('.unit-status-sel');
+          if (sel) {
+            sel.value = status;
+            // Update the stored originalStatus on the select so warn logic stays correct
+            sel.dataset.originalStatus = status;
+          }
+        }
 
         flashRow(row, 'rgba(255,193,7,0.1)');
+        showToast('Unit status updated to ' + label, 'success');
+
       } else {
-        alert('Error: ' + (data.message || 'Unknown'));
+        // Show the backend's rejection reason clearly
+        showToast('⚠️ ' + (data.message || 'Update rejected by server.'), 'warning');
       }
     } catch (e) {
-      alert('Network error');
+      showToast('Network error. Please try again.');
     }
-  });
+}
+document.querySelectorAll('.unit-save-btn').forEach(btn => {
+  btn.addEventListener('click', unitSaveBtnHandler);
 });
 
 // ── Overall status apply ──────────────────────────────────────────────────────
@@ -284,12 +474,112 @@ if (applyBtn) applyBtn.addEventListener('click', async function () {
     });
     const data = await res.json();
     if (data.ok) {
-      location.reload();
+      const label = status.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+      const HARD_LOCKED = ['cancelled','delivered','return_requested','returned','failed'];
+
+      // ── 1. Update the top-right overall badge ──────────────────────────────
+      const ob = document.getElementById('overallBadge');
+      ob.textContent = label;
+      ob.className   = `badge fs-6 px-3 py-2 bg-${statusColor(status)}`;
+
+      // ── 2. Replace the Overall control in the card header ─────────────────
+      const overallControlWrap = document.getElementById('overallStatusSel').closest('.d-flex.align-items-center.gap-2');
+      if (HARD_LOCKED.includes(status)) {
+        const lockColor = status === 'delivered'        ? 'success'
+                        : status === 'return_requested' ? 'warning'
+                        : status === 'returned'         ? 'info'
+                        : status === 'failed'           ? 'danger'
+                        :                                 'danger';
+        overallControlWrap.innerHTML = `
+          <label class="text-info small mb-0">Overall:</label>
+          <span class="badge bg-${lockColor} px-3 py-2">
+            ${label} — Locked
+          </span>`;
+
+      } else if (status === 'out_for_delivery') {
+        // OFD: keep Overall label but replace select+button with OFD-only UI
+        overallControlWrap.innerHTML = `
+          <label class="text-info small mb-0">Overall:</label>
+          <span class="badge bg-warning text-dark px-3 py-2">
+            Out For Delivery
+            <i class="fas fa-lock ms-1" style="font-size:.6rem;opacity:.8;"></i>
+          </span>`;
+
+      } else {
+        // Still editable — just update the select's current value
+        const sel = document.getElementById('overallStatusSel');
+        if (sel) sel.value = status;
+      }
+
+      // ── 3. Update every unit's Status badge + Action cell ─────────────────
+      // Backend cascades the status to all non-terminal units, so mirror that here
+      document.querySelectorAll('tbody tr').forEach(row => {
+        const unitBadge  = row.querySelector('.unit-status-badge');
+        const actionCell = row.querySelector('td:last-child');
+        if (!unitBadge || !actionCell) return;
+
+        // Only update units that aren't already in a terminal state
+        const currentUnitStatus = unitBadge.textContent.trim().toLowerCase().replace(/ /g,'_');
+        const unitTerminal = ['cancelled','delivered','return_requested','returned','failed'];
+        if (unitTerminal.includes(currentUnitStatus)) return;
+
+        // Update the status badge
+        unitBadge.textContent = label;
+        unitBadge.className   = `badge unit-status-badge bg-${statusColor(status)}`;
+
+        // Update the action cell to match the new state
+        const orderId   = actionCell.querySelector('[data-order-id]')?.dataset.orderId   || ORDER_ID;
+        const itemId    = actionCell.querySelector('[data-item-id]')?.dataset.itemId     || row.dataset.itemId;
+        const unitIndex = actionCell.querySelector('[data-unit-index]')?.dataset.unitIndex ?? row.dataset.unit;
+
+        if (HARD_LOCKED.includes(status)) {
+          const lockColor = status === 'delivered'        ? 'success'
+                          : status === 'cancelled'        ? 'danger'
+                          : status === 'returned'         ? 'secondary'
+                          : status === 'return_requested' ? 'warning'
+                          : status === 'failed'           ? 'danger'
+                          :                                 'secondary';
+          actionCell.innerHTML = `
+            <span class="badge bg-${lockColor} px-2 py-1">
+              ${label}
+              <i class="fas fa-lock ms-1" style="font-size:.6rem;opacity:.7;"></i>
+            </span>`;
+
+        } else if (status === 'out_for_delivery') {
+          actionCell.innerHTML = `
+            <div class="d-flex align-items-center gap-1 flex-wrap">
+              <span class="badge bg-warning text-dark px-2 py-1">
+                Out For Delivery
+                <i class="fas fa-lock ms-1" style="font-size:.6rem;opacity:.8;"></i>
+              </span>
+              <button class="btn btn-sm btn-outline-success ms-1 unit-save-btn"
+                      data-order-id="${orderId}"
+                      data-item-id="${itemId}"
+                      data-unit-index="${unitIndex}"
+                      data-force-status="delivered"
+                      title="Mark as Delivered">
+                <i class="fas fa-check me-1"></i> Delivered
+              </button>
+            </div>`;
+          actionCell.querySelector('.unit-save-btn').addEventListener('click', unitSaveBtnHandler);
+
+        } else {
+          // Still editable — update the select's value
+          const sel = actionCell.querySelector('.unit-status-sel');
+          if (sel) {
+            sel.value = status;
+            sel.dataset.originalStatus = status;
+          }
+        }
+      });
+
+      showToast('Order status updated to ' + label, 'success');
+
     } else {
-      alert('Error: ' + (data.message || 'Unknown'));
+      showToast('Error: ' + (data.message || 'Unknown'));
     }
- } catch (e) {
-    alert('Network error');
+  } catch (e) {
+    showToast('Network error. Please try again.');
   }
 });  // end if(applyBtn)
 

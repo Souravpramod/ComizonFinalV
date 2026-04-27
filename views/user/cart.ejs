@@ -186,12 +186,22 @@
                                             <a href="/product/<%= item._id %>" class="text-decoration-none text-white"><%= item.name %></a>
                                         </h5>
                                         <p class="text-white-50 small mb-0">Category: <%= item.category %></p>
+                                        <% if (item.hasOffer) { %>
+                                            <div class="mt-1 d-flex align-items-center gap-2 flex-wrap offer-sync-badge">
+                                                <span class="text-white-50 text-decoration-line-through small">$<%= Number(item.price).toFixed(2) %> each</span>
+                                                <span class="small fw-bold" style="color:<%= item.badgeColor %>; font-size:.72rem;">
+                                                    <i class="fas fa-tag me-1"></i><%= item.offerBadge %>
+                                                </span>
+                                            </div>
+                                        <% } else { %>
+                                            <p class="text-white-50 small mb-0 offer-sync-badge" data-nooffer="1">$<%= Number(item.price).toFixed(2) %> each</p>
+                                        <% } %>
                                         <% if (!item.isActive) { %>
                                             <span class="badge bg-danger mt-1"><i class="fas fa-ban me-1"></i>Blocked by Admin</span>
                                         <% } else if (item.outOfstock) { %>
-                                            <span class="badge bg-secondary mt-1">Out of Stock</span>
+                                            <span class="badge bg-secondary mt-1 stock-badge">Out of Stock</span>
                                         <% } else if (item.stock <= 5) { %>
-                                            <span class="badge bg-warning text-dark mt-1">Only <%= item.stock %> left</span>
+                                            <span class="badge bg-warning text-dark mt-1 stock-badge">Only <%= item.stock %> left</span>
                                         <% } %>
                                     </div>
                                     <h4 class="text-danger fw-bold ms-3 flex-shrink-0">
@@ -223,6 +233,7 @@
                                                 max="<%= Math.min(item.stock, 6) %>"
                                                 data-product-id="<%= item._id %>"
                                                 data-original="<%= item.quantity %>"
+                                                data-price="<%= item.effectivePrice %>"
                                                 onchange="updateQty(this)"
                                                 style="width:40px; background:#000; border:none; border-left:1px solid #444; border-right:1px solid #444; color:#FFFFFF; text-align:center; -moz-appearance:textfield;"
                                             >
@@ -267,17 +278,15 @@
                         </h4>
 
                         <div class="d-flex justify-content-between mb-2 text-white-50">
-                            <span>Subtotal (<%= itemCount %> item<%= itemCount !== 1 ? 's' : '' %>)</span>
-                            <span>$<%= subtotal.toFixed(2) %></span>
+                            <span>Subtotal (<span id="summary-itemcount"><%= itemCount %></span> item<%= itemCount !== 1 ? 's' : '' %>)</span>
+                            <span id="summary-subtotal">$<%= subtotal.toFixed(2) %></span>
                         </div>
 
                         <div class="d-flex justify-content-between mb-3 text-white-50">
                             <span>Shipping</span>
-                            <% if (shipping === 0) { %>
-                                <span class="text-success">FREE</span>
-                            <% } else { %>
-                                <span>$<%= shipping.toFixed(2) %></span>
-                            <% } %>
+                            <span id="summary-shipping" class="<%= shipping === 0 ? 'text-success' : '' %>">
+                                <%= shipping === 0 ? 'FREE' : `$${shipping.toFixed(2)}` %>
+                            </span>
                         </div>
 
                         <% if (shipping > 0) { %>
@@ -287,32 +296,44 @@
                             </p>
                         <% } %>
 
-                        <!-- Promo Code -->
-                        <div class="input-group mb-4">
-                            <input
-                                type="text"
-                                class="form-control bg-black border-secondary text-white rounded-0"
-                                placeholder="Promo Code"
-                            >
-                            <button class="btn btn-outline-secondary rounded-0 px-3">APPLY</button>
-                        </div>
+                        
+                        
 
                         <hr class="border-secondary">
 
                         <div class="d-flex justify-content-between align-items-center mb-4">
                             <h4 class="fw-bold mb-0">Total</h4>
-                            <h4 class="text-danger fw-bold mb-0">$<%= total.toFixed(2) %></h4>
+                            <h4 class="text-danger fw-bold mb-0" id="summary-total">$<%= total.toFixed(2) %></h4>
                         </div>
 
-                        <a href="/checkout" class="btn btn-danger w-100 py-3 fw-bold rounded-0 mb-3 text-uppercase">
+                        <% const hasBlocked = cartItems.some(i => !i.isActive); %>
+                        <% const hasPremiumLocked = cartItems.some(i => i.isPremiumLocked); %>
+                        <% if (hasBlocked || hasPremiumLocked) { %>
+                          <button class="btn btn-secondary w-100 py-3 fw-bold rounded-0 mb-3 text-uppercase" disabled
+                                  id="cartCheckoutBtn"
+                                  title="Remove restricted items before proceeding">
+                            <i class="fas fa-ban me-2"></i>Checkout Unavailable
+                          </button>
+                          <p class="text-danger small text-center mb-0" id="cartCheckoutMsg">
+                            <i class="fas fa-exclamation-circle me-1"></i>
+                            Remove blocked or premium item(s) above to proceed.
+                          </p>
+                        <% } else { %>
+                          <a href="/checkout" class="btn btn-danger w-100 py-3 fw-bold rounded-0 mb-3 text-uppercase"
+                             id="cartCheckoutBtn">
                             <i class="fas fa-lock me-2"></i>Proceed to Checkout
-                        </a>
+                          </a>
+                          <p class="text-danger small text-center mb-0 d-none" id="cartCheckoutMsg">
+                            <i class="fas fa-exclamation-circle me-1"></i>
+                            Remove premium item(s) to proceed.
+                          </p>
+                        <% } %>
 
                         <div class="text-center my-2">
                             <span class="text-muted small">or</span>
                         </div>
 
-                        <a href="/profile/orders" class="btn btn-outline-light w-100 py-2 rounded-0 text-uppercase fw-bold">
+                        <a href="/orders" class="btn btn-outline-light w-100 py-2 rounded-0 text-uppercase fw-bold">
                             <i class="fas fa-history me-2"></i>View Order History
                         </a>
                     </div>
@@ -375,7 +396,14 @@ function updateQty(input) {
 
             // header item count
             const countBadge = document.querySelector('.cart-count-badge');
-            if (countBadge) countBadge.textContent = data.itemCount;
+            if (countBadge) {
+                countBadge.textContent = data.itemCount;
+                if (data.itemCount > 0) {
+                    countBadge.classList.remove('d-none');
+                } else {
+                    countBadge.classList.add('d-none');
+                }
+            }
         }
     })
     .catch(() => {
@@ -402,6 +430,352 @@ function showCartAlert(type, html) {
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
         </div>`;
 }
+
+// ── Stock poller — checks every 8 seconds ─────────────────────────────────────
+let pollerActive = true;
+
+async function syncCartStock() {
+    if (!pollerActive) return;
+    try {
+        const res  = await fetch('/cart/stock-sync');
+        const data = await res.json();
+        if (!data.ok || !data.items) return;
+
+        let anyChange = false;
+
+        data.items.forEach(item => {
+            const productId = item.productId;
+
+            // Find the input for this product
+            const input = document.querySelector(`input[data-product-id="${productId}"]`);
+            const row   = input?.closest('.d-flex.align-items-start');
+            if (!input || !row) return;
+
+            const oldQty = parseInt(input.dataset.original, 10);
+
+            // Update max attribute
+input.max = Math.min(item.stock, 6);
+
+// ── Re-render the stock badge based on current stock ──────────────────
+if (!item.blocked && !item.outOfstock) {
+    const existingBadge = row.querySelector('.stock-badge');
+    if (item.stock <= 5) {
+        // Stock is low — show or update the "Only X left" badge
+        if (existingBadge) {
+            // Update existing badge in place
+            existingBadge.className   = 'badge bg-warning text-dark mt-1 stock-badge';
+            existingBadge.textContent = `Only ${item.stock} left`;
+        } else {
+            // No badge yet — create and insert it
+            const badge = document.createElement('span');
+            badge.className   = 'badge bg-warning text-dark mt-1 stock-badge';
+            badge.textContent = `Only ${item.stock} left`;
+            const catLine = row.querySelector('p.text-white-50.small');
+            if (catLine) catLine.after(badge);
+        }
+    } else {
+        // Stock is healthy (> 5) — remove any leftover low-stock badge
+        const existingLowBadge = row.querySelector('.stock-badge');
+        if (existingLowBadge) existingLowBadge.remove();
+    }
+}
+
+// If quantity was reduced
+            if (item.reduced && item.quantity !== oldQty) {
+                anyChange = true;
+                input.value            = item.quantity;
+                input.dataset.original = item.quantity;
+
+                // Update line total display using effective price
+                const effPrice = parseFloat(input.dataset.price || 0); // data-price is now effectivePrice
+                const lineEl   = row.querySelector('h4.text-danger');
+                if (lineEl && effPrice) {
+                    lineEl.textContent = `$${(effPrice * item.quantity).toFixed(2)}`;
+                }
+
+                // Flash the row orange to signal auto-reduction
+                row.style.transition = 'background .4s';
+                row.style.background = 'rgba(253,126,20,0.18)';
+                setTimeout(() => { row.style.background = ''; }, 2000);
+            }
+
+            // If out of stock — show badge
+            if (item.outOfstock) {
+                anyChange = true;
+                const stockBadge = row.querySelector('.stock-badge');
+                if (!stockBadge) {
+                    const nameDiv = row.querySelector('h5');
+                    if (nameDiv) {
+                        const badge = document.createElement('span');
+                        badge.className   = 'badge bg-secondary mt-1 ms-1 stock-badge';
+                        badge.textContent = 'Out of Stock';
+                        nameDiv.after(badge);
+                    }
+                }
+            }
+
+            // If blocked by admin
+            if (item.blocked) {
+                anyChange = true;
+                const nameEl = row.querySelector('h5 a');
+                if (nameEl && !row.querySelector('.blocked-badge')) {
+                    const badge = document.createElement('span');
+                    badge.className   = 'badge bg-danger mt-1 ms-1 blocked-badge';
+                    badge.innerHTML   = '<i class="fas fa-ban me-1"></i>Blocked by Admin';
+                    nameEl.closest('h5').after(badge);
+                }
+            }
+
+            // ── If product became premium and user is not premium ─────────────
+            // Server already removed it from DB; disable checkout and fade row
+            if (item.isPremiumLocked) {
+                anyChange = true;
+                cartPremiumLockedIds.add(item.productId);
+                updateCartCheckoutBtn();
+
+                const cartRow = row.closest('li') || row.closest('[data-cart-item]') || row.parentElement;
+                if (cartRow && !cartRow.querySelector('.premium-locked-badge')) {
+                    // Badge on the product name
+                    const badge = document.createElement('span');
+                    badge.className   = 'badge bg-warning text-dark mt-1 ms-1 premium-locked-badge';
+                    badge.innerHTML   = '<i class="fas fa-crown me-1"></i>Premium Only — Remove to Proceed';
+                    row.querySelector('h5')?.after(badge);
+                    // Dim the row like blocked items — do NOT auto-remove,
+                    // force the user to manually remove it (same UX as blocked)
+                    cartRow.style.opacity = '0.55';
+                    showCartAlert('warning',
+                        '<i class="fas fa-crown me-2"></i>A product in your cart became <strong>Premium Only</strong>. ' +
+                        'Remove it to proceed to checkout, or upgrade your membership.'
+                    );
+                }
+            } else {
+                // Product is no longer premium-locked (e.g. admin reverted it)
+                if (cartPremiumLockedIds.has(item.productId)) {
+                    cartPremiumLockedIds.delete(item.productId);
+                    updateCartCheckoutBtn();
+                    // Remove badge and restore opacity
+                    const badge = row.querySelector('.premium-locked-badge');
+                    if (badge) badge.remove();
+                    const cartRow = row.closest('li') || row.closest('[data-cart-item]') || row.parentElement;
+                    if (cartRow) cartRow.style.opacity = '';
+                }
+            }
+            // ────────────────────────────────────────────────────────────────
+        });
+
+        // Recalculate summary if anything changed
+        if (anyChange) {
+            recalcSummary();
+            showCartAlert('warning',
+                '<i class="fas fa-exclamation-triangle me-2"></i>Some item quantities were adjusted due to stock changes.'
+            );
+        }
+
+    } catch (e) {
+        // silent fail — poller runs again in 8s
+    }
+}
+
+// ── Cart checkout button gating ───────────────────────────────────────────────
+const cartPremiumLockedIds = new Set();
+
+function updateCartCheckoutBtn() {
+    const btn = document.getElementById('cartCheckoutBtn');
+    const msg = document.getElementById('cartCheckoutMsg');
+    if (!btn) return;
+
+    // Count remaining blocked items (server-rendered, still in DOM)
+    const hasBlockedInDOM  = !!document.querySelector('.blocked-badge');
+    const hasPremiumInDOM  = cartPremiumLockedIds.size > 0;
+    const shouldDisable    = hasBlockedInDOM || hasPremiumInDOM;
+
+    if (shouldDisable) {
+        // Replace the <a> tag with a disabled <button> if it's currently a link
+        if (btn.tagName === 'A') {
+            const disabledBtn = document.createElement('button');
+            disabledBtn.id        = 'cartCheckoutBtn';
+            disabledBtn.className = 'btn btn-secondary w-100 py-3 fw-bold rounded-0 mb-3 text-uppercase';
+            disabledBtn.disabled  = true;
+            disabledBtn.title     = 'Remove restricted items before proceeding';
+            disabledBtn.innerHTML = '<i class="fas fa-ban me-2"></i>Checkout Unavailable';
+            btn.replaceWith(disabledBtn);
+        } else {
+            btn.disabled  = true;
+            btn.className = 'btn btn-secondary w-100 py-3 fw-bold rounded-0 mb-3 text-uppercase';
+            btn.innerHTML = '<i class="fas fa-ban me-2"></i>Checkout Unavailable';
+        }
+        if (msg) msg.classList.remove('d-none');
+    } else {
+        if (msg) msg.classList.add('d-none');
+        // Re-enable — only matters if it was dynamically disabled (was a button, not a link)
+        const currentBtn = document.getElementById('cartCheckoutBtn');
+        if (currentBtn && currentBtn.tagName === 'BUTTON') {
+            const link    = document.createElement('a');
+            link.id       = 'cartCheckoutBtn';
+            link.href     = '/checkout';
+            link.className = 'btn btn-danger w-100 py-3 fw-bold rounded-0 mb-3 text-uppercase';
+            link.innerHTML = '<i class="fas fa-lock me-2"></i>Proceed to Checkout';
+            currentBtn.replaceWith(link);
+        }
+    }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+
+
+function recalcSummary() {
+    let subtotal = 0;
+    let itemCount = 0;
+
+    document.querySelectorAll('input[data-product-id]').forEach(input => {
+        const qty   = parseInt(input.value, 10) || 0;
+        const price = parseFloat(input.dataset.price || 0);
+        subtotal  += qty * price;
+        itemCount += qty;
+    });
+
+    const shipping = subtotal === 0 ? 0 : subtotal >= 500 ? 0 : 5;
+    const total    = subtotal + shipping;
+
+    const setEl = (sel, val) => { const el = document.querySelector(sel); if (el) el.textContent = val; };
+    setEl('#summary-subtotal',  `$${subtotal.toFixed(2)}`);
+    setEl('#summary-shipping',  shipping === 0 ? 'FREE' : `$${shipping.toFixed(2)}`);
+    setEl('#summary-total',     `$${total.toFixed(2)}`);
+    setEl('#summary-itemcount', itemCount);
+}
+let offerPollerActive = true;
+
+async function syncOfferPrices() {
+    if (!offerPollerActive) return;
+    try {
+        const res  = await fetch('/cart/offer-prices');
+        const data = await res.json();
+        if (!data.ok || !data.items?.length) return;
+
+        let anyChange       = false;
+        const addedOffers   = [];   // product names where offer was newly added
+        const removedOffers = [];   // product names where offer was removed
+        const changedOffers = [];   // product names where offer price changed
+
+        data.items.forEach(item => {
+            const input = document.querySelector(`input[data-product-id="${item.productId}"]`);
+            if (!input) return;
+
+            const row = input.closest('.d-flex.align-items-start');
+            if (!row) return;
+
+            const oldEffective = parseFloat(input.dataset.price || 0);
+            const priceChanged = Math.abs(item.effectivePrice - oldEffective) > 0.001;
+
+            // ── Collect product name for toast messages ───────────────────────
+            const productName = row.querySelector('h5 a')?.textContent?.trim() || 'A product';
+
+            // ── Detect offer state transitions ────────────────────────────────
+            const infoDiv    = row.querySelector('.flex-grow-1 > .d-flex.justify-content-between > div');
+            const badgeEl    = infoDiv?.querySelector('.offer-sync-badge');
+            const hadOffer   = badgeEl && !badgeEl.dataset.nooffer;
+            const nowHasOffer = item.hasOffer;
+
+            if (!hadOffer && nowHasOffer)           addedOffers.push(productName);
+            else if (hadOffer && !nowHasOffer)      removedOffers.push(productName);
+            else if (hadOffer && priceChanged)      changedOffers.push(productName);
+
+            // ── Update effective price on the input ───────────────────────────
+            if (priceChanged) {
+                anyChange = true;
+                input.dataset.price = item.effectivePrice;
+            }
+
+            // ── Update line total display ─────────────────────────────────────
+            const lineEl = row.querySelector('h4.text-danger');
+            if (lineEl) {
+                const serverLineTotal = item.lineTotal.toFixed(2);
+                if (lineEl.textContent.trim() !== `$${serverLineTotal}`) {
+                    anyChange = true;
+                    lineEl.textContent = `$${serverLineTotal}`;
+                }
+            }
+
+            // ── Update offer badge area ───────────────────────────────────────
+            // Works whether badgeEl exists or not — find the anchor point
+            if (infoDiv) {
+                if (nowHasOffer) {
+                    const newBadge = document.createElement('div');
+                    newBadge.className = 'mt-1 d-flex align-items-center gap-2 flex-wrap offer-sync-badge';
+                    newBadge.innerHTML = `
+                        <span class="text-white-50 text-decoration-line-through small">$${Number(item.originalPrice).toFixed(2)} each</span>
+                        <span class="small fw-bold" style="color:${item.badgeColor}; font-size:.72rem;">
+                            <i class="fas fa-tag me-1"></i>${item.offerBadge}
+                        </span>`;
+                    if (badgeEl) {
+                        badgeEl.replaceWith(newBadge);
+                    } else {
+                        // No badge yet — insert after the category line (p.text-white-50.small)
+                        const catLine = infoDiv.querySelector('p.text-white-50.small');
+                        if (catLine) catLine.after(newBadge);
+                        else infoDiv.appendChild(newBadge);
+                    }
+                    anyChange = true;
+                } else {
+                    // No offer now — show plain price line
+                    const newLine = document.createElement('p');
+                    newLine.className = 'text-white-50 small mb-0 offer-sync-badge';
+                    newLine.dataset.nooffer = '1';
+                    newLine.textContent = `$${Number(item.originalPrice).toFixed(2)} each`;
+                    if (badgeEl) {
+                        badgeEl.replaceWith(newLine);
+                        anyChange = true;
+                    }
+                    // If no badge and no offer — nothing to do, already showing plain price
+                }
+            }
+        });
+
+        if (anyChange) recalcSummary();
+
+        // ── Inform the user about what changed ────────────────────────────────
+        if (addedOffers.length) {
+            showCartAlert('success',
+                `<i class="fas fa-tag me-2"></i><strong>New offer applied!</strong> ` +
+                `${addedOffers.join(', ')} now has a discount — your total has been updated.`
+            );
+        }
+        if (removedOffers.length) {
+            showCartAlert('warning',
+                `<i class="fas fa-exclamation-triangle me-2"></i><strong>Offer removed.</strong> ` +
+                `The discount on ${removedOffers.join(', ')} has ended. ` +
+                `Your cart total has been updated to reflect the original price.`
+            );
+        }
+        if (changedOffers.length) {
+            showCartAlert('warning',
+                `<i class="fas fa-info-circle me-2"></i><strong>Offer price changed.</strong> ` +
+                `The discount on ${changedOffers.join(', ')} was updated by the store. ` +
+                `Your cart total reflects the new price.`
+            );
+        }
+
+    } catch (e) {
+        // silent fail — poller runs again
+    }
+}
+
+// Run immediately on page load, then every 30 seconds
+syncOfferPrices();
+const offerPollInterval = setInterval(syncOfferPrices, 30000);
+
+// Start polling every 8 seconds
+const stockPollInterval = setInterval(syncCartStock, 8000);
+
+// Stop polling when tab is hidden to save resources
+document.addEventListener('visibilitychange', () => {
+    pollerActive      = !document.hidden;
+    offerPollerActive = !document.hidden;
+    if (!document.hidden) {
+        syncCartStock();
+        syncOfferPrices(); // immediate offer sync when tab becomes visible again
+    }
+});
 
 function stepQty(btn, delta) {
     const wrapper = btn.closest('.qty-wrapper');

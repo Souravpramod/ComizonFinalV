@@ -248,6 +248,33 @@ body {
             </div><!-- end PASSWORD -->
 
 
+            <!-- REFERRAL CODE (optional) -->
+            <div class="mb-4">
+                <h5 class="section-title">Referral <span class="text-white-50 fw-normal" style="font-size:.8rem;">(optional)</span></h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Referral Code</label>
+                        <div class="input-group">
+                            <span class="input-group-text" style="background:#222;border-color:#444;color:#aaa;">
+                                <i class="fas fa-ticket-alt"></i>
+                            </span>
+                            <input type="text"
+                                name="referralCode"
+                                id="referralCodeInput"
+                                class="form-control text-uppercase"
+                                placeholder="Enter a friend's referral code"
+                                value="<%= locals.formData?.referralCode || '' %>"
+                                maxlength="8"
+                                oninput="this.value=this.value.toUpperCase()">
+                        </div>
+                        <div class="text-white-50 small mt-1">
+                            <i class="fas fa-gift me-1 text-warning"></i>
+                            get Exclusive offers upto <strong class="text-warning">$50</strong> when enter with your friend's referal.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- ACTION BUTTONS -->
             <div class="row mt-4">
                 <div class="col-md-6">
@@ -296,6 +323,80 @@ document.querySelectorAll('.toggle-password').forEach(btn => {
         }
     });
 });
+
+// ── Live inline validation — clears errors as the user fixes each field ───────
+function liveError(input, msg) {
+    // find nearest error div that was server-rendered, or create a live one
+    const wrap = input.closest('.col-md-4, .col-md-6, .col-12, .input-group')?.parentElement
+              || input.closest('.col-md-4, .col-md-6, .col-12');
+    if (!wrap) return;
+    let errEl = wrap.querySelector('.live-err');
+    if (!errEl) {
+        errEl = document.createElement('div');
+        errEl.className = 'text-danger small live-err mt-1';
+        wrap.appendChild(errEl);
+    }
+    // also clear/set any server-rendered error sibling
+    const serverErr = wrap.querySelector('.text-danger.small:not(.live-err)');
+    if (msg) {
+        errEl.textContent = msg;
+        errEl.style.display = 'block';
+        input.classList.add('border-danger');
+        input.classList.remove('border-success');
+        if (serverErr) serverErr.style.display = 'none'; // hide stale server error
+    } else {
+        errEl.textContent = '';
+        errEl.style.display = 'none';
+        input.classList.remove('border-danger');
+        input.classList.add('border-success');
+        if (serverErr) serverErr.style.display = 'none'; // clear stale server error
+    }
+}
+
+function validate(name, value) {
+    const v = (value || '').trim();
+    if (name === 'firstName' || name === 'lastName') return v ? '' : 'This field is required.';
+    if (name === 'username')  return v.length >= 3 ? '' : 'At least 3 characters required.';
+    if (name === 'email')     return /\S+@\S+\.\S+/.test(v) ? '' : 'Enter a valid email address.';
+    if (name === 'phone')     return v.length >= 6 ? '' : 'Enter a valid phone number.';
+    if (name === 'password') {
+        if (v.length < 8)            return 'At least 8 characters required.';
+        if (!/[a-zA-Z]/.test(v))     return 'Must include at least one letter.';
+        if (!/[0-9]/.test(v))        return 'Must include at least one number.';
+        if (!/[^a-zA-Z0-9]/.test(v)) return 'Must include at least one special character.';
+        return '';
+    }
+    if (name === 'confirmPassword') {
+        const pw = document.querySelector('[name="password"]')?.value || '';
+        return v === pw ? '' : 'Passwords do not match.';
+    }
+    return '';
+}
+
+// attach blur + input to every relevant input/select
+document.querySelectorAll('input[name], select[name]').forEach(el => {
+    ['blur','input'].forEach(evt => {
+        el.addEventListener(evt, () => liveError(el, validate(el.name, el.value)));
+    });
+});
+
+// live password criteria checklist
+const pwInput = document.querySelector('[name="password"]');
+if (pwInput) {
+    pwInput.addEventListener('input', function() {
+        const v = this.value;
+        const rules = [
+            { ok: v.length >= 8,            label: 'At least 8 characters' },
+            { ok: /[a-zA-Z]/.test(v),        label: 'At least one letter' },
+            { ok: /[0-9]/.test(v),           label: 'At least one number' },
+            { ok: /[^a-zA-Z0-9]/.test(v),    label: 'At least one special character' },
+        ];
+        const box = this.closest('.col-md-6')?.querySelector('.small.mt-2');
+        if (box) box.innerHTML = rules.map(r =>
+            `<div class="${r.ok ? 'text-success' : 'text-danger'}">${r.ok ? '✓' : '✗'} ${r.label}</div>`
+        ).join('');
+    });
+}
 </script>
 
 </body>

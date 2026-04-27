@@ -1,0 +1,952 @@
+<%- include('../../partials/admin-head') %>
+
+<body class="bg-black text-light">
+  <%- include('../../partials/admin-sidebar') %>
+
+  <div class="main-content">
+    <%- include('../../partials/admin-header') %>
+
+    <div class="admin-content p-4">
+
+      <% if (locals.error) { %>
+        <div class="alert alert-danger alert-dismissible fade show rounded-0">
+          <%= error %>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      <% } %>
+      <% if (locals.success) { %>
+        <div class="alert alert-success alert-dismissible fade show rounded-0">
+          <%= success %>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      <% } %>
+
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h4 class="mb-0" style="color:var(--admin-gold);">Offer Management</h4>
+          <p class="text-white small mb-0">Product, Category & Referral offers. Best offer is auto-applied.</p>
+        </div>
+        <button class="btn btn-warning btn-sm fw-bold rounded-0" data-bs-toggle="modal" data-bs-target="#createOfferModal">
+          <i class="fas fa-plus me-1"></i> New Offer
+        </button>
+      </div>
+
+      <!-- Filters -->
+      <form method="GET" action="/admin/offers" class="row g-2 mb-4">
+        <div class="col-md-4">
+          <input type="text" name="search" value="<%= search %>"
+            class="form-control form-control-sm bg-dark text-light border-secondary rounded-0" placeholder="Search title...">
+        </div>
+        <div class="col-md-2">
+          <select name="offerType" class="form-select form-select-sm bg-dark text-light border-secondary rounded-0">
+            <option value="">All Types</option>
+            <option value="product"  <%= offerType==='product'  ?'selected':'' %>>Product</option>
+            <option value="category" <%= offerType==='category' ?'selected':'' %>>Category</option>
+            <option value="referral" <%= offerType==='referral' ?'selected':'' %>>Referral</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <select name="status" class="form-select form-select-sm bg-dark text-light border-secondary rounded-0">
+            <option value="">All Statuses</option>
+            <option value="active"   <%= status==='active'   ?'selected':'' %>>Active</option>
+            <option value="inactive" <%= status==='inactive' ?'selected':'' %>>Inactive</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-outline-warning btn-sm w-100 rounded-0">Filter</button>
+        </div>
+        <div class="col-md-2">
+          <a href="/admin/offers" class="btn btn-outline-secondary btn-sm w-100 rounded-0">Reset</a>
+        </div>
+      </form>
+
+      <!-- Table -->
+      <div class="card bg-dark border-secondary rounded-0">
+        <div class="card-body p-0">
+          <% if (offers.length === 0) { %>
+            <div class="text-center py-5 text-white">
+              <i class="fas fa-tag fa-3x mb-3"></i>
+              <p>No offers found.</p>
+            </div>
+          <% } else { %>
+          <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0">
+              <thead style="color:var(--admin-gold);">
+                <tr>
+                  <th>Title</th><th>Type</th><th>Discount</th><th>Targets</th>
+                  <th>Validity</th><th>Status</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% offers.forEach(o => { %>
+                  <%
+                    const discLabel = o.discountType === 'flat'
+                      ? `$${o.discountValue} OFF`
+                      : `${o.discountValue}% OFF${o.maxDiscount ? ` (max $${o.maxDiscount})` : ''}`;
+                    const typeColor = o.offerType === 'product' ? 'info' : o.offerType === 'category' ? 'primary' : 'warning';
+                    const statusColor = o.liveStatus === 'Active' ? 'success' : o.liveStatus === 'Scheduled' ? 'info' : o.liveStatus === 'Expired' ? 'danger' : 'secondary';
+                  %>
+                  <tr>
+                    <td class="fw-semibold"><%= o.title %></td>
+                    <td><span class="badge bg-<%= typeColor %>"><%= o.offerType %></span></td>
+                    <td class="text-warning"><%= discLabel %></td>
+                    <td class="small text-white">
+                      <% if (o.offerType === 'product') { %>
+                        <%= (o.productIds || []).map(p => p.productName).join(', ') || '—' %>
+                      <% } else if (o.offerType === 'category') { %>
+                        <%= (o.categoryIds || []).map(c => c.categoryName).join(', ') || '—' %>
+                      <% } else { %>
+                        Wallet: $<%= o.referralReward %> reward
+                      <% } %>
+                    </td>
+                    <td class="small">
+                      <div class="text-white">
+                        <% if (o.startsAt) { %><i class="fas fa-play me-1"></i><%= new Date(o.startsAt).toLocaleDateString('en-IN') %><br><% } %>
+                        <% if (o.expiresAt) { %><i class="fas fa-stop me-1"></i><%= new Date(o.expiresAt).toLocaleDateString('en-IN') %><% } else { %>No expiry<% } %>
+                      </div>
+                    </td>
+                    <td><span class="badge bg-<%= statusColor %>"><%= o.liveStatus %></span></td>
+                    <td>
+                      <div class="d-flex gap-1">
+                        <button class="btn btn-sm rounded-0 <%= o.isActive ? 'btn-outline-warning' : 'btn-outline-success' %> toggle-offer-btn"
+                          data-id="<%= o._id %>" title="<%= o.isActive ? 'Deactivate' : 'Activate' %>">
+                          <i class="fas <%= o.isActive ? 'fa-pause' : 'fa-play' %>"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-info rounded-0 edit-offer-btn" title="Edit"
+                          data-id="<%= o._id %>"
+                          data-title="<%= o.title %>"
+                          data-offertype="<%= o.offerType %>"
+                          data-discounttype="<%= o.discountType %>"
+                          data-discountvalue="<%= o.discountValue %>"
+                          data-maxdiscount="<%= o.maxDiscount || '' %>"
+                          data-referralreward="<%= o.referralReward || 0 %>"
+                          data-startsat="<%= o.startsAt ? new Date(o.startsAt).toISOString().slice(0,16) : '' %>"
+                          data-expiresat="<%= o.expiresAt ? new Date(o.expiresAt).toISOString().slice(0,16) : '' %>"
+                          data-badgecolorlisting="<%= o.badgeColorListing || '#E63946' %>"
+                          data-badgecolordetail="<%= o.badgeColorDetail || '#E63946' %>"
+                          data-categoryids="<%= (o.categoryIds||[]).map(c=>c._id).join(',') %>"
+                          data-productids="<%= (o.productIds||[]).map(p=>p._id).join(',') %>"
+                          data-productnames="<%= (o.productIds||[]).map(p=>p.productName).join('||') %>">
+                          <i class="fas fa-pen"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger rounded-0 delete-offer-btn" data-id="<%= o._id %>" title="Delete">
+                          <i class="fas fa-trash"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <% if (totalPages > 1) { %>
+        <nav class="mt-3">
+          <ul class="pagination pagination-sm justify-content-center mb-0">
+            <% for (let i = 1; i <= totalPages; i++) { %>
+              <li class="page-item <%= i === currentPage ? 'active' : '' %>">
+                <a class="page-link bg-dark border-secondary text-light rounded-0"
+                   href="/admin/offers?page=<%= i %>&search=<%= encodeURIComponent(search) %>&offerType=<%= offerType %>&status=<%= status %>">
+                  <%= i %>
+                </a>
+              </li>
+            <% } %>
+          </ul>
+        </nav>
+      <% } %>
+
+    </div>
+  </div>
+
+  <!-- Create Offer Modal -->
+  <div class="modal fade" id="createOfferModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content bg-dark text-light border-secondary rounded-0">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title" style="color:var(--admin-gold);">Create New Offer</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="offerCreateForm" novalidate>
+          <div class="modal-body">
+            <!-- Backend error banner — shown by JS, hidden by default -->
+            <div id="offerModalError" class="alert alert-danger rounded-0 py-2 mb-3 d-none">
+              <i class="fas fa-exclamation-circle me-2"></i>
+              <span id="offerModalErrorText"></span>
+            </div>
+            <div class="row g-3">
+
+              <div class="col-md-8">
+                <label class="form-label text-info small">Offer Title <span class="text-danger">*</span></label>
+                <input type="text" name="title" class="form-control bg-dark text-light border-secondary rounded-0"
+                  placeholder="e.g. Summer Sale 2025 — Manga" maxlength="100">
+                <div class="form-text text-white small">Must be unique. Used in sales reports.</div>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label text-info small">Offer Type <span class="text-danger">*</span></label>
+                <select name="offerType" id="offerTypeSelect" class="form-select bg-dark text-light border-secondary rounded-0">
+                  <option value="product">Product Offer</option>
+                  <option value="category">Category Offer</option>
+                  <option value="referral">Referral Offer</option>
+                </select>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label text-info small">
+                  <i class="fas fa-palette me-1"></i>Badge Color — Listing Page
+                </label>
+                <div class="d-flex align-items-center gap-2">
+                  <input type="color" name="badgeColorListing" value="#E63946"
+                    class="form-control form-control-color bg-dark border-secondary rounded-0" style="width:48px;height:38px;">
+                  <input type="text" id="listingColorText" value="#E63946"
+                    class="form-control bg-dark text-light border-secondary rounded-0 font-monospace"
+                    placeholder="#E63946" maxlength="7"
+                    oninput="document.querySelector('[name=badgeColorListing]').value=this.value">
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label text-info small">
+                  <i class="fas fa-palette me-1"></i>Badge Color — Detail Page
+                </label>
+                <div class="d-flex align-items-center gap-2">
+                  <input type="color" name="badgeColorDetail" value="#E63946"
+                    class="form-control form-control-color bg-dark border-secondary rounded-0" style="width:48px;height:38px;">
+                  <input type="text" id="detailColorText" value="#E63946"
+                    class="form-control bg-dark text-light border-secondary rounded-0 font-monospace"
+                    placeholder="#E63946" maxlength="7"
+                    oninput="document.querySelector('[name=badgeColorDetail]').value=this.value">
+                </div>
+              </div>
+
+              <!-- Product selector -->
+              <div id="productWrap" style="display:none;">
+    <label class="form-label small">Search & Add Products</label>
+    <div class="input-group input-group-sm mb-2">
+        <input type="text" id="productSearchInput" class="form-control rounded-0" placeholder="Search by name...">
+        <button type="button" class="btn btn-warning" id="btnSearchProduct">Find</button>
+    </div>
+    
+    <div id="searchResults" class="list-group rounded-0 mb-2 shadow" style="max-height: 150px; overflow-y: auto; position: absolute; z-index: 1000; width: 90%;"></div>
+
+    <div id="selectedProductsContainer" class="d-flex flex-wrap gap-2 border p-2 mb-3 bg-dark">
+        <span class="text-white small">No products selected</span>
+    </div>
+    
+    <div id="hiddenProductInputs"></div>
+</div>
+
+              <!-- Category selector -->
+              <div class="col-12" id="categoryWrap" style="display:none;">
+                <label class="form-label text-info small">Target Categories * (hold Ctrl/Cmd to multi-select)</label>
+                <select name="categoryIds" multiple class="form-select bg-dark text-light border-secondary rounded-0" style="height:120px;">
+                  <% categories.forEach(c => { %>
+                    <option value="<%= c._id %>"><%= c.categoryName %></option>
+                  <% }) %>
+                </select>
+              </div>
+
+              <!-- Referral reward -->
+              <div class="col-md-4" id="referralWrap" style="display:none;">
+                <label class="form-label text-info small">Wallet Reward for Referrer ($)</label>
+                <input type="number" name="referralReward" min="0" max="100" step="0.01" value="0"
+                  class="form-control bg-dark text-light border-secondary rounded-0">
+                <div class="form-text text-white small">Max $10 per referral to prevent abuse.</div>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label text-info small">Discount Type *</label>
+                <select name="discountType" id="offerDiscountType" class="form-select bg-dark text-light border-secondary rounded-0" required>
+                  <option value="flat">Flat ($)</option>
+                  <option value="percent">Percentage (%)</option>
+                </select>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label text-info small">Discount Value <span class="text-danger">*</span></label>
+                <input type="number" name="discountValue" min="0" step="0.01"
+                  class="form-control bg-dark text-light border-secondary rounded-0">
+                <div class="form-text text-white small" id="discValueHint">For percent: max 99%. For flat: must be less than the cheapest product price.</div>
+              </div>
+
+              <div class="col-md-4" id="offerMaxDiscWrap" style="display:none;">
+                <label class="form-label text-info small">Max Discount Cap ($) <span class="text-muted small fw-normal">— percent only</span></label>
+                <input type="number" name="maxDiscount" min="0" step="0.01"
+                  class="form-control bg-dark text-light border-secondary rounded-0" placeholder="e.g. 30 — cap the discount at $30">
+                <div class="form-text text-muted small">Prevents large carts from getting unreasonably big discounts.</div>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label text-info small">Start Date</label>
+                <input type="datetime-local" name="startsAt"
+                  class="form-control bg-dark text-light border-secondary rounded-0">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label text-info small">Expiry Date</label>
+                <input type="datetime-local" name="expiresAt"
+                  class="form-control bg-dark text-light border-secondary rounded-0">
+                <div class="form-text text-white small">Must be in the future and at least 1 hour after Start Date.</div>
+              </div>
+
+            </div>
+          </div>
+          <div class="modal-footer border-secondary">
+            <button type="button" class="btn btn-outline-secondary rounded-0" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-warning rounded-0 fw-bold" id="offerSubmitBtn">
+              <span id="offerBtnText">Create Offer</span>
+              <span id="offerBtnSpinner" class="d-none">
+                <span class="spinner-border spinner-border-sm me-1"></span>Creating…
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Offer Modal -->
+  <div class="modal fade" id="editOfferModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content bg-dark text-light border-secondary rounded-0">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title" style="color:var(--admin-gold);">Edit Offer</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="editOfferForm" novalidate>
+          <div class="modal-body">
+            <div id="editOfferModalError" class="alert alert-danger rounded-0 py-2 mb-3 d-none">
+              <i class="fas fa-exclamation-circle me-2"></i>
+              <span id="editOfferModalErrorText"></span>
+            </div>
+            <div class="row g-3">
+ 
+              <div class="col-md-8">
+                <label class="form-label text-info small">Offer Title <span class="text-danger">*</span></label>
+                <input type="text" name="title" id="editOfferTitle" class="form-control bg-dark text-light border-secondary rounded-0" maxlength="100">
+              </div>
+ 
+              <div class="col-md-4">
+                <label class="form-label text-info small">Offer Type <span class="text-danger">*</span></label>
+                <select name="offerType" id="editOfferTypeSelect" class="form-select bg-dark text-light border-secondary rounded-0">
+                  <option value="product">Product Offer</option>
+                  <option value="category">Category Offer</option>
+                  <option value="referral">Referral Offer</option>
+                </select>
+              </div>
+ 
+              <div class="col-md-6">
+                <label class="form-label text-info small"><i class="fas fa-palette me-1"></i>Badge Color — Listing Page</label>
+                <div class="d-flex align-items-center gap-2">
+                  <input type="color" name="badgeColorListing" id="editBadgeColorListing" value="#E63946"
+                    class="form-control form-control-color bg-dark border-secondary rounded-0" style="width:48px;height:38px;">
+                  <input type="text" id="editListingColorText" value="#E63946"
+                    class="form-control bg-dark text-light border-secondary rounded-0 font-monospace" maxlength="7"
+                    oninput="document.getElementById('editBadgeColorListing').value=this.value">
+                </div>
+              </div>
+ 
+              <div class="col-md-6">
+                <label class="form-label text-info small"><i class="fas fa-palette me-1"></i>Badge Color — Detail Page</label>
+                <div class="d-flex align-items-center gap-2">
+                  <input type="color" name="badgeColorDetail" id="editBadgeColorDetail" value="#E63946"
+                    class="form-control form-control-color bg-dark border-secondary rounded-0" style="width:48px;height:38px;">
+                  <input type="text" id="editDetailColorText" value="#E63946"
+                    class="form-control bg-dark text-light border-secondary rounded-0 font-monospace" maxlength="7"
+                    oninput="document.getElementById('editBadgeColorDetail').value=this.value">
+                </div>
+              </div>
+ 
+              <!-- Product selector -->
+              <div id="editProductWrap" style="display:none;" class="col-12">
+                <label class="form-label small">Search & Add Products</label>
+                <div class="input-group input-group-sm mb-2">
+                  <input type="text" id="editProductSearchInput" class="form-control rounded-0" placeholder="Search by name...">
+                  <button type="button" class="btn btn-warning" id="editBtnSearchProduct">Find</button>
+                </div>
+                <div id="editSearchResults" class="list-group rounded-0 mb-2 shadow" style="max-height:150px;overflow-y:auto;position:absolute;z-index:1000;width:90%;"></div>
+                <div id="editSelectedProductsContainer" class="d-flex flex-wrap gap-2 border p-2 mb-3 bg-dark">
+                  <span class="text-white small">No products selected</span>
+                </div>
+                <div id="editHiddenProductInputs"></div>
+              </div>
+ 
+              <!-- Category selector -->
+              <div class="col-12" id="editCategoryWrap" style="display:none;">
+                <label class="form-label text-info small">Target Categories * (hold Ctrl/Cmd to multi-select)</label>
+                <select name="categoryIds" id="editCategoryIds" multiple class="form-select bg-dark text-light border-secondary rounded-0" style="height:120px;">
+                  <% categories.forEach(c => { %>
+                    <option value="<%= c._id %>"><%= c.categoryName %></option>
+                  <% }) %>
+                </select>
+              </div>
+ 
+              <!-- Referral reward -->
+              <div class="col-md-4" id="editReferralWrap" style="display:none;">
+                <label class="form-label text-info small">Wallet Reward for Referrer ($)</label>
+                <input type="number" name="referralReward" id="editReferralReward" min="0" max="100" step="0.01" value="0"
+                  class="form-control bg-dark text-light border-secondary rounded-0">
+              </div>
+ 
+              <div class="col-md-4">
+                <label class="form-label text-info small">Discount Type *</label>
+                <select name="discountType" id="editOfferDiscountType" class="form-select bg-dark text-light border-secondary rounded-0">
+                  <option value="flat">Flat ($)</option>
+                  <option value="percent">Percentage (%)</option>
+                </select>
+              </div>
+ 
+              <div class="col-md-4">
+                <label class="form-label text-info small">Discount Value <span class="text-danger">*</span></label>
+                <input type="number" name="discountValue" id="editDiscountValue" min="0" step="0.01"
+                  class="form-control bg-dark text-light border-secondary rounded-0">
+              </div>
+ 
+              <div class="col-md-4" id="editOfferMaxDiscWrap" style="display:none;">
+                <label class="form-label text-info small">Max Discount Cap ($) <span class="text-muted small fw-normal">— percent only</span></label>
+                <input type="number" name="maxDiscount" id="editMaxDiscount" min="0" step="0.01"
+                  class="form-control bg-dark text-light border-secondary rounded-0" placeholder="e.g. 30 — cap the discount at $30">
+                <div class="form-text text-muted small">Prevents large carts from getting unreasonably big discounts.</div>
+              </div>
+ 
+              <div class="col-md-6">
+                <label class="form-label text-info small">Start Date</label>
+                <input type="datetime-local" name="startsAt" id="editStartsAt"
+                  class="form-control bg-dark text-light border-secondary rounded-0">
+              </div>
+ 
+              <div class="col-md-6">
+                <label class="form-label text-info small">Expiry Date</label>
+                <input type="datetime-local" name="expiresAt" id="editExpiresAt"
+                  class="form-control bg-dark text-light border-secondary rounded-0">
+              </div>
+ 
+            </div>
+          </div>
+          <div class="modal-footer border-secondary">
+            <button type="button" class="btn btn-outline-secondary rounded-0" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-info rounded-0 fw-bold text-dark" id="editOfferSubmitBtn">
+              <span id="editOfferBtnText">Save Changes</span>
+              <span id="editOfferBtnSpinner" class="d-none">
+                <span class="spinner-border spinner-border-sm me-1"></span>Saving…
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</body>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+
+  function showToast(msg, type='danger') {
+    const id = 'toast_' + Date.now();
+    const bg = type === 'success' ? 'bg-success' : type === 'warning' ? 'bg-warning text-dark' : 'bg-danger';
+    const el = document.createElement('div');
+    el.id = id;
+    el.className = `toast align-items-center text-white border-0 ${bg} position-fixed rounded-0`;
+    el.style.cssText = 'top:80px;right:20px;z-index:9999;min-width:280px;';
+    el.setAttribute('role','alert');
+    el.innerHTML = `<div class="d-flex"><div class="toast-body fw-semibold">${msg}</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+    document.body.appendChild(el);
+    const t = new bootstrap.Toast(el, { delay: 4000 });
+    t.show();
+    el.addEventListener('hidden.bs.toast', () => el.remove());
+}
+// ── Color picker sync ─────────────────────────────────────────────────────────
+document.querySelector('[name=badgeColorListing]')?.addEventListener('input', function() {
+  document.getElementById('listingColorText').value = this.value;
+});
+document.querySelector('[name=badgeColorDetail]')?.addEventListener('input', function() {
+  document.getElementById('detailColorText').value = this.value;
+});
+document.getElementById('editBadgeColorListing')?.addEventListener('input', function() {
+  document.getElementById('editListingColorText').value = this.value;
+});
+document.getElementById('editBadgeColorDetail')?.addEventListener('input', function() {
+  document.getElementById('editDetailColorText').value = this.value;
+});
+ 
+// ── CREATE form: type/discount toggles ────────────────────────────────────────
+const offerTypeSelect  = document.getElementById('offerTypeSelect');
+const offerDiscountType = document.getElementById('offerDiscountType');
+ 
+function updateOfferForm() {
+  const t = offerTypeSelect.value;
+  document.getElementById('productWrap').style.display  = t === 'product'  ? '' : 'none';
+  document.getElementById('categoryWrap').style.display = t === 'category' ? '' : 'none';
+  document.getElementById('referralWrap').style.display = t === 'referral' ? '' : 'none';
+}
+offerTypeSelect.addEventListener('change', updateOfferForm);
+offerDiscountType.addEventListener('change', function() {
+  document.getElementById('offerMaxDiscWrap').style.display = this.value === 'percent' ? '' : 'none';
+});
+// Set correct initial state on page load
+document.getElementById('offerMaxDiscWrap').style.display =
+  document.getElementById('offerDiscountType').value === 'percent' ? '' : 'none';
+ 
+// ── EDIT form: type/discount toggles ─────────────────────────────────────────
+const editOfferTypeSelect   = document.getElementById('editOfferTypeSelect');
+const editOfferDiscountType = document.getElementById('editOfferDiscountType');
+ 
+function updateEditOfferForm() {
+  const t = editOfferTypeSelect.value;
+  document.getElementById('editProductWrap').style.display  = t === 'product'  ? '' : 'none';
+  document.getElementById('editCategoryWrap').style.display = t === 'category' ? '' : 'none';
+  document.getElementById('editReferralWrap').style.display = t === 'referral' ? '' : 'none';
+}
+editOfferTypeSelect.addEventListener('change', updateEditOfferForm);
+editOfferDiscountType.addEventListener('change', function() {
+  document.getElementById('editOfferMaxDiscWrap').style.display = this.value === 'percent' ? '' : 'none';
+});
+// Edit modal: set correct initial state when modal opens
+document.getElementById('editOfferModal')?.addEventListener('show.bs.modal', function() {
+  const isPercent = document.getElementById('editOfferDiscountType').value === 'percent';
+  document.getElementById('editOfferMaxDiscWrap').style.display = isPercent ? '' : 'none';
+});
+
+// ── Toggle ────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.toggle-offer-btn').forEach(btn => {
+  btn.addEventListener('click', async function() {
+    const res  = await fetch(`/admin/offers/${this.dataset.id}/toggle`, { method: 'POST' });
+    const data = await res.json();
+    if (data.ok) location.reload();
+    else showToast(data.message || 'Toggle failed.');
+  });
+});
+ 
+// ── Delete ────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.delete-offer-btn').forEach(btn => {
+  btn.addEventListener('click', async function() {
+    if (!confirm('Delete this offer?')) return;
+    const res  = await fetch(`/admin/offers/${this.dataset.id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.ok) location.reload();
+    else showToast(data.message || 'Delete failed.');
+  });
+});
+ 
+// ── Edit button: populate modal ───────────────────────────────────────────────
+let editingOfferId = null;
+ 
+document.querySelectorAll('.edit-offer-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    editingOfferId = this.dataset.id;
+ 
+    // Basic fields
+    document.getElementById('editOfferTitle').value       = this.dataset.title;
+    document.getElementById('editDiscountValue').value    = this.dataset.discountvalue;
+    document.getElementById('editMaxDiscount').value      = this.dataset.maxdiscount;
+    document.getElementById('editReferralReward').value   = this.dataset.referralreward;
+    document.getElementById('editStartsAt').value         = this.dataset.startsat;
+    document.getElementById('editExpiresAt').value        = this.dataset.expiresat;
+ 
+    // Colors
+    const listingColor = this.dataset.badgecolorlisting || '#E63946';
+    const detailColor  = this.dataset.badgecolordetail  || '#E63946';
+    document.getElementById('editBadgeColorListing').value = listingColor;
+    document.getElementById('editListingColorText').value  = listingColor;
+    document.getElementById('editBadgeColorDetail').value  = detailColor;
+    document.getElementById('editDetailColorText').value   = detailColor;
+ 
+    // Offer type
+    editOfferTypeSelect.value = this.dataset.offertype;
+    updateEditOfferForm();
+ 
+    // Discount type
+    editOfferDiscountType.value = this.dataset.discounttype;
+    document.getElementById('editOfferMaxDiscWrap').style.display =
+      this.dataset.discounttype === 'percent' ? '' : 'none';
+ 
+    // Pre-select categories
+    const selectedCatIds = (this.dataset.categoryids || '').split(',').filter(Boolean);
+    document.querySelectorAll('#editCategoryIds option').forEach(opt => {
+      opt.selected = selectedCatIds.includes(opt.value);
+    });
+ 
+    // Pre-fill products
+    const productIds   = (this.dataset.productids   || '').split(',').filter(Boolean);
+    const productNames = (this.dataset.productnames || '').split('||').filter(Boolean);
+    const container    = document.getElementById('editSelectedProductsContainer');
+    const hiddenArea   = document.getElementById('editHiddenProductInputs');
+    container.innerHTML  = '';
+    hiddenArea.innerHTML = '';
+    if (productIds.length === 0) {
+      container.innerHTML = '<span class="text-white small">No products selected</span>';
+    } else {
+      productIds.forEach((pid, i) => {
+        const name = productNames[i] || pid;
+        container.innerHTML += `<span class="badge bg-warning text-dark p-2" id="epill-${pid}">
+          ${name} <i class="fas fa-times ms-2" style="cursor:pointer;" onclick="removeEditProduct('${pid}')"></i>
+        </span>`;
+        hiddenArea.innerHTML += `<input type="hidden" name="productIds" value="${pid}" id="einput-${pid}">`;
+      });
+    }
+ 
+    // Clear previous errors
+    document.getElementById('editOfferModalError').classList.add('d-none');
+    document.getElementById('editOfferModalErrorText').textContent = '';
+ 
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('editOfferModal')).show();
+  });
+});
+ 
+// ── Edit product search ───────────────────────────────────────────────────────
+document.getElementById('editBtnSearchProduct').addEventListener('click', async () => {
+  const query      = document.getElementById('editProductSearchInput').value;
+  const resultsDiv = document.getElementById('editSearchResults');
+  if (query.length < 2) { showToast('Enter at least 2 characters', 'warning'); return; }
+  const res      = await fetch(`/admin/products/search-api?q=${query}`);
+  const products = await res.json();
+  resultsDiv.innerHTML = products.map(p => `
+    <button type="button" class="list-group-item list-group-item-action bg-secondary text-white"
+        onclick="addEditProduct('${p._id}', '${p.productName}')">
+        ${p.productName} ($${p.price})
+    </button>
+  `).join('');
+});
+ 
+function addEditProduct(id, name) {
+  const container  = document.getElementById('editSelectedProductsContainer');
+  const hiddenArea = document.getElementById('editHiddenProductInputs');
+  if (document.getElementById('einput-' + id)) return;
+  if (container.innerText.trim() === 'No products selected') container.innerHTML = '';
+  container.innerHTML += `<span class="badge bg-warning text-dark p-2" id="epill-${id}">
+    ${name} <i class="fas fa-times ms-2" style="cursor:pointer;" onclick="removeEditProduct('${id}')"></i>
+  </span>`;
+  hiddenArea.innerHTML += `<input type="hidden" name="productIds" value="${id}" id="einput-${id}">`;
+  document.getElementById('editSearchResults').innerHTML = '';
+  document.getElementById('editProductSearchInput').value = '';
+}
+ 
+function removeEditProduct(id) {
+  document.getElementById('epill-' + id)?.remove();
+  document.getElementById('einput-' + id)?.remove();
+}
+ 
+// ── Edit form submit ──────────────────────────────────────────────────────────
+document.getElementById('editOfferForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form      = e.target;
+  const errorBox  = document.getElementById('offerModalError');
+  const errorText = document.getElementById('offerModalErrorText');
+  const submitBtn = document.getElementById('offerSubmitBtn');
+  const btnText   = document.getElementById('offerBtnText');
+  const btnSpin   = document.getElementById('offerBtnSpinner');
+
+  // Trigger all live validations before submitting
+  form.querySelectorAll('input[name], select[name]').forEach(el => el.dispatchEvent(new Event('blur')));
+  if (hasLiveErrors(form)) return;
+
+  errorBox.classList.add('d-none');
+  errorText.textContent = '';
+  submitBtn.disabled = true;
+  btnText.classList.add('d-none');
+  btnSpin.classList.remove('d-none');
+ 
+  try {
+    const fd  = new FormData(form);
+    const obj = {};
+    for (const [k, v] of fd.entries()) {
+      obj[k] = obj[k] !== undefined ? [].concat(obj[k], v) : v;
+    }
+ 
+    const res  = await fetch(`/admin/offers/${editingOfferId}/edit`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(obj),
+    });
+    const data = await res.json();
+ 
+    if (data.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('editOfferModal')).hide();
+      window.location.reload();
+    } else {
+      errorText.textContent = data.message;
+      errorBox.classList.remove('d-none');
+      errorBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  } catch (err) {
+    errorText.textContent = 'Network error. Please try again.';
+    errorBox.classList.remove('d-none');
+  } finally {
+    submitBtn.disabled = false;
+    btnText.classList.remove('d-none');
+    btnSpin.classList.add('d-none');
+  }
+});
+ 
+// ── CREATE form product search (existing) ─────────────────────────────────────
+document.getElementById('btnSearchProduct').addEventListener('click', async () => {
+  const query      = document.getElementById('productSearchInput').value;
+  const resultsDiv = document.getElementById('searchResults');
+  if (query.length < 2) { showToast('Enter at least 2 characters', 'warning'); return; }
+  const res      = await fetch(`/admin/products/search-api?q=${query}`);
+  const products = await res.json();
+  resultsDiv.innerHTML = products.map(p => `
+    <button type="button" class="list-group-item list-group-item-action bg-secondary text-white"
+        onclick="selectProductForOffer('${p._id}', '${p.productName}')">
+        ${p.productName} ($${p.price})
+    </button>
+  `).join('');
+});
+ 
+function selectProductForOffer(id, name) {
+  const container  = document.getElementById('selectedProductsContainer');
+  const hiddenArea = document.getElementById('hiddenProductInputs');
+  if (document.getElementById('input-' + id)) return;
+  if (container.innerText.trim() === 'No products selected') container.innerHTML = '';
+  container.innerHTML += `<span class="badge bg-warning text-dark p-2" id="pill-${id}">
+    ${name} <i class="fas fa-times ms-2" style="cursor:pointer;" onclick="removeSelectedProduct('${id}')"></i>
+  </span>`;
+  hiddenArea.innerHTML += `<input type="hidden" name="productIds" value="${id}" id="input-${id}">`;
+  document.getElementById('searchResults').innerHTML = '';
+  document.getElementById('productSearchInput').value = '';
+}
+ 
+function removeSelectedProduct(id) {
+  document.getElementById('pill-' + id)?.remove();
+  document.getElementById('input-' + id)?.remove();
+}
+ 
+// ══════════════════════════════════════════════════════════════════════════════
+// ── LIVE VALIDATION (shared by both Create and Edit forms) ───────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+function addErrDiv(inputEl) {
+  if (!inputEl || inputEl.nextElementSibling?.classList.contains('lv-feedback')) return;
+  const d = document.createElement('div');
+  d.className = 'lv-feedback text-danger small mt-1';
+  inputEl.after(d);
+}
+
+function setFieldError(inputEl, msg) {
+  if (!inputEl) return;
+  const fb = inputEl.nextElementSibling?.classList.contains('lv-feedback')
+    ? inputEl.nextElementSibling : null;
+  if (msg) {
+    inputEl.classList.add('is-invalid');
+    inputEl.classList.remove('is-valid');
+    if (fb) fb.textContent = msg;
+  } else {
+    inputEl.classList.remove('is-invalid');
+    inputEl.classList.add('is-valid');
+    if (fb) fb.textContent = '';
+  }
+}
+
+function clearField(inputEl) {
+  if (!inputEl) return;
+  inputEl.classList.remove('is-invalid', 'is-valid');
+  const fb = inputEl.nextElementSibling?.classList.contains('lv-feedback')
+    ? inputEl.nextElementSibling : null;
+  if (fb) fb.textContent = '';
+}
+
+// ── Rules — mirror the backend exactly ───────────────────────────────────────
+function validateTitle(val) {
+  const v = (val || '').trim();
+  if (!v || v.length < 3)   return 'Title must be at least 3 characters.';
+  if (v.length > 100)        return 'Title must be under 100 characters.';
+  return '';
+}
+
+function validateDiscountValue(val, discountType) {
+  const dv = parseFloat(val);
+  if (isNaN(dv) || dv < 0)                         return 'Discount value must be a non-negative number.';
+  if (discountType === 'percent' && dv >= 100)       return 'Percentage discount must be less than 100%.';
+  if (discountType === 'flat'    && dv <= 0)         return 'Flat discount value must be greater than 0.';
+  return '';
+}
+
+function validateMaxDiscount(val) {
+  if (!val && val !== 0) return '';  // optional field
+  const v = parseFloat(val);
+  if (!isNaN(v) && v <= 0) return 'Max discount cap must be a positive number.';
+  return '';
+}
+
+function validateReferralReward(val) {
+  const v = parseFloat(val) || 0;
+  if (v < 0)   return 'Referral reward cannot be negative.';
+  if (v > 100) return 'Referral reward cannot exceed $100.';
+  return '';
+}
+
+function validateDates(startsAtVal, expiresAtVal) {
+  const now    = new Date();
+  const start  = startsAtVal  ? new Date(startsAtVal)  : null;
+  const expiry = expiresAtVal ? new Date(expiresAtVal) : null;
+  const errors = { startsAt: '', expiresAt: '' };
+  if (expiry && expiry <= now)
+    errors.expiresAt = 'Expiry date must be in the future.';
+  if (start && expiry && start >= expiry)
+    errors.startsAt = 'Start date must be before expiry date.';
+  if (start && expiry && errors.startsAt === '' && (expiry - start) < 60 * 60 * 1000)
+    errors.startsAt = 'Offer duration must be at least 1 hour.';
+  return errors;
+}
+
+// ── Wire up CREATE form ───────────────────────────────────────────────────────
+(function wireCreateForm() {
+  const titleEl   = document.querySelector('#offerCreateForm [name="title"]');
+  const dvEl      = document.querySelector('#offerCreateForm [name="discountValue"]');
+  const mdEl      = document.querySelector('#offerCreateForm [name="maxDiscount"]');
+  const rrEl      = document.querySelector('#offerCreateForm [name="referralReward"]');
+  const startEl   = document.querySelector('#offerCreateForm [name="startsAt"]');
+  const expiryEl  = document.querySelector('#offerCreateForm [name="expiresAt"]');
+  const dtSelect  = document.getElementById('offerDiscountType');
+  const typeSelect = document.getElementById('offerTypeSelect');
+
+  [titleEl, dvEl, mdEl, rrEl, startEl, expiryEl].forEach(addErrDiv);
+
+  if (titleEl) {
+    titleEl.addEventListener('input', () => setFieldError(titleEl, validateTitle(titleEl.value)));
+    titleEl.addEventListener('blur',  () => setFieldError(titleEl, validateTitle(titleEl.value)));
+  }
+
+  function revalidateDV() {
+    if (dvEl) setFieldError(dvEl, validateDiscountValue(dvEl.value, dtSelect?.value));
+  }
+  if (dvEl) {
+    dvEl.addEventListener('input', revalidateDV);
+    dvEl.addEventListener('blur',  revalidateDV);
+  }
+  if (dtSelect) dtSelect.addEventListener('change', revalidateDV);
+
+  if (mdEl) {
+    mdEl.addEventListener('input', () => setFieldError(mdEl, validateMaxDiscount(mdEl.value)));
+    mdEl.addEventListener('blur',  () => setFieldError(mdEl, validateMaxDiscount(mdEl.value)));
+  }
+
+  if (rrEl) {
+    rrEl.addEventListener('input', () => setFieldError(rrEl, validateReferralReward(rrEl.value)));
+    rrEl.addEventListener('blur',  () => setFieldError(rrEl, validateReferralReward(rrEl.value)));
+  }
+
+  function revalidateDates() {
+    const errs = validateDates(startEl?.value, expiryEl?.value);
+    if (startEl)  setFieldError(startEl,  errs.startsAt);
+    if (expiryEl) setFieldError(expiryEl, errs.expiresAt);
+  }
+  if (startEl)  { startEl.addEventListener('change',  revalidateDates); startEl.addEventListener('blur', revalidateDates); }
+  if (expiryEl) { expiryEl.addEventListener('change', revalidateDates); expiryEl.addEventListener('blur', revalidateDates); }
+
+  // Clear product/category selector errors when selection changes
+  if (typeSelect) typeSelect.addEventListener('change', () => {
+    [titleEl, dvEl, mdEl, rrEl, startEl, expiryEl].forEach(clearField);
+  });
+})();
+
+// ── Wire up EDIT form ─────────────────────────────────────────────────────────
+(function wireEditForm() {
+  const titleEl   = document.getElementById('editOfferTitle');
+  const dvEl      = document.getElementById('editDiscountValue');
+  const mdEl      = document.getElementById('editMaxDiscount');
+  const rrEl      = document.getElementById('editReferralReward');
+  const startEl   = document.getElementById('editStartsAt');
+  const expiryEl  = document.getElementById('editExpiresAt');
+  const dtSelect  = document.getElementById('editOfferDiscountType');
+
+  [titleEl, dvEl, mdEl, rrEl, startEl, expiryEl].forEach(addErrDiv);
+
+  if (titleEl) {
+    titleEl.addEventListener('input', () => setFieldError(titleEl, validateTitle(titleEl.value)));
+    titleEl.addEventListener('blur',  () => setFieldError(titleEl, validateTitle(titleEl.value)));
+  }
+
+  function revalidateDV() {
+    if (dvEl) setFieldError(dvEl, validateDiscountValue(dvEl.value, dtSelect?.value));
+  }
+  if (dvEl) {
+    dvEl.addEventListener('input', revalidateDV);
+    dvEl.addEventListener('blur',  revalidateDV);
+  }
+  if (dtSelect) dtSelect.addEventListener('change', revalidateDV);
+
+  if (mdEl) {
+    mdEl.addEventListener('input', () => setFieldError(mdEl, validateMaxDiscount(mdEl.value)));
+    mdEl.addEventListener('blur',  () => setFieldError(mdEl, validateMaxDiscount(mdEl.value)));
+  }
+
+  if (rrEl) {
+    rrEl.addEventListener('input', () => setFieldError(rrEl, validateReferralReward(rrEl.value)));
+    rrEl.addEventListener('blur',  () => setFieldError(rrEl, validateReferralReward(rrEl.value)));
+  }
+
+  function revalidateDates() {
+    const errs = validateDates(startEl?.value, expiryEl?.value);
+    if (startEl)  setFieldError(startEl,  errs.startsAt);
+    if (expiryEl) setFieldError(expiryEl, errs.expiresAt);
+  }
+  if (startEl)  { startEl.addEventListener('change',  revalidateDates); startEl.addEventListener('blur', revalidateDates); }
+  if (expiryEl) { expiryEl.addEventListener('change', revalidateDates); expiryEl.addEventListener('blur', revalidateDates); }
+
+  // Re-clear live errors when modal opens with fresh data
+  document.getElementById('editOfferModal')?.addEventListener('show.bs.modal', () => {
+    [titleEl, dvEl, mdEl, rrEl, startEl, expiryEl].forEach(clearField);
+  });
+})();
+
+// ── Pre-submit checks: block submit if live errors exist ──────────────────────
+function hasLiveErrors(formEl) {
+  return formEl.querySelectorAll('.is-invalid').length > 0;
+}
+
+// ── CREATE form submit ────────────────────────────────────────────────────────
+document.getElementById('offerCreateForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const form      = e.target;
+  const errorBox  = document.getElementById('editOfferModalError');
+  const errorText = document.getElementById('editOfferModalErrorText');
+  const submitBtn = document.getElementById('editOfferSubmitBtn');
+  const btnText   = document.getElementById('editOfferBtnText');
+  const btnSpin   = document.getElementById('editOfferBtnSpinner');
+
+  form.querySelectorAll('input[name], select[name]').forEach(el => el.dispatchEvent(new Event('blur')));
+  if (hasLiveErrors(form)) return;
+
+  errorBox.classList.add('d-none');
+  errorText.textContent = '';
+  submitBtn.disabled = true;
+  btnText.classList.add('d-none');
+  btnSpin.classList.remove('d-none');
+ 
+  try {
+    const fd  = new FormData(form);
+    const obj = {};
+    for (const [k, v] of fd.entries()) {
+      obj[k] = obj[k] !== undefined ? [].concat(obj[k], v) : v;
+    }
+    const res  = await fetch('/admin/offers/add', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(obj),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      bootstrap.Modal.getInstance(document.getElementById('createOfferModal')).hide();
+      window.location.reload();
+    } else {
+      errorText.textContent = data.message;
+      errorBox.classList.remove('d-none');
+      errorBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  } catch (err) {
+    errorText.textContent = 'Network error. Please try again.';
+    errorBox.classList.remove('d-none');
+  } finally {
+    submitBtn.disabled = false;
+    btnText.classList.remove('d-none');
+    btnSpin.classList.add('d-none');
+  }
+});
+</script>

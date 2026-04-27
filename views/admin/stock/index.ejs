@@ -1,0 +1,311 @@
+<%- include('../../partials/admin-head') %>
+
+<body class="bg-black text-light">
+  <%- include('../../partials/admin-sidebar') %>
+
+  <div class="main-content">
+    <%- include('../../partials/admin-header') %>
+
+    <div class="admin-content p-4">
+
+      <% if (locals.error) { %>
+        <div class="alert alert-danger alert-dismissible fade show rounded-0" role="alert">
+          <%= error %>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      <% } %>
+      <% if (locals.success) { %>
+        <div class="alert alert-success alert-dismissible fade show rounded-0" role="alert">
+          <%= success %>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      <% } %>
+
+      <div class="admin-header mb-4">
+        <h4 class="mb-0" style="color:var(--admin-gold);">Stock Management</h4>
+        <p class="text-muted small mb-0">Monitor and update product inventory levels</p>
+      </div>
+
+      <!-- Stats -->
+      <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+          <div class="admin-stat-card" style="border-left:3px solid var(--admin-gold);">
+            <div class="d-flex align-items-center gap-3">
+              <div class="stat-icon" style="background:rgba(255,193,7,.15);color:var(--admin-gold);">
+                <i class="fas fa-boxes"></i>
+              </div>
+              <div>
+                <div class="stat-value text-warning"><%= stats.totalUnits.toLocaleString() %></div>
+                <div class="stat-label text-muted small">Total Units</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+          <div class="admin-stat-card" style="border-left:3px solid #28a745;">
+            <div class="d-flex align-items-center gap-3">
+              <div class="stat-icon" style="background:rgba(40,167,69,.15);color:#28a745;">
+                <i class="fas fa-check-circle"></i>
+              </div>
+              <div>
+                <div class="stat-value" style="color:#28a745;"><%= stats.inStock %></div>
+                <div class="stat-label text-muted small">In Stock (>10)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+          <div class="admin-stat-card" style="border-left:3px solid #fd7e14;">
+            <div class="d-flex align-items-center gap-3">
+              <div class="stat-icon" style="background:rgba(253,126,20,.15);color:#fd7e14;">
+                <i class="fas fa-exclamation-triangle"></i>
+              </div>
+              <div>
+                <div class="stat-value" style="color:#fd7e14;"><%= stats.lowStock %></div>
+                <div class="stat-label text-muted small">Low Stock (1–10)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+          <div class="admin-stat-card" style="border-left:3px solid #dc3545;">
+            <div class="d-flex align-items-center gap-3">
+              <div class="stat-icon" style="background:rgba(220,53,69,.15);color:#dc3545;">
+                <i class="fas fa-times-circle"></i>
+              </div>
+              <div>
+                <div class="stat-value text-danger"><%= stats.outOfStock %></div>
+                <div class="stat-label text-muted small">Out of Stock</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <form method="GET" action="/admin/stock">
+        <div class="row mb-4 align-items-end">
+          <div class="col-lg-4 col-md-6 mb-2">
+            <div class="input-group">
+              <span class="input-group-text bg-dark border-secondary text-muted"><i class="fas fa-search"></i></span>
+              <input type="text" class="form-control bg-dark text-light border-secondary"
+                     name="search" placeholder="Search by name or SKU…"
+                     value="<%= locals.search || '' %>">
+            </div>
+          </div>
+          <div class="col-lg-2 col-md-4 mb-2">
+            <select class="form-select bg-dark text-light border-secondary" name="category">
+              <option value="">All Categories</option>
+              <% categories.forEach(cat => { %>
+                <option value="<%= cat._id %>" <%= (locals.category==cat._id)?'selected':'' %>>
+                  <%= cat.categoryName %>
+                </option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="col-lg-2 col-md-4 mb-2">
+            <select class="form-select bg-dark text-light border-secondary" name="status">
+              <option value="">All Status</option>
+              <option value="instock"    <%= locals.status==='instock'?'selected':''    %>>In Stock</option>
+              <option value="lowstock"   <%= locals.status==='lowstock'?'selected':''   %>>Low Stock</option>
+              <option value="outofstock" <%= locals.status==='outofstock'?'selected':'' %>>Out of Stock</option>
+            </select>
+          </div>
+          <div class="col-lg-2 col-md-4 mb-2">
+            <select class="form-select bg-dark text-light border-secondary" name="sort">
+              <option value="newest"     <%= locals.sort==='newest'?'selected':''     %>>Newest</option>
+              <option value="stock_asc"  <%= locals.sort==='stock_asc'?'selected':''  %>>Stock (Low–High)</option>
+              <option value="stock_desc" <%= locals.sort==='stock_desc'?'selected':'' %>>Stock (High–Low)</option>
+              <option value="name_asc"   <%= locals.sort==='name_asc'?'selected':''   %>>Name (A–Z)</option>
+            </select>
+          </div>
+          <div class="col-lg-1 mb-2">
+            <button type="submit" class="btn btn-admin-primary w-100">Go</button>
+          </div>
+          <div class="col-lg-1 mb-2">
+            <a href="/admin/stock" class="btn btn-outline-secondary w-100" title="Clear"><i class="fas fa-times"></i></a>
+          </div>
+        </div>
+      </form>
+
+      <!-- Table -->
+      <div class="admin-table">
+        <table class="table table-dark table-hover mb-0">
+          <thead>
+            <tr>
+              <th style="color:var(--admin-gold);">PRODUCT</th>
+              <th style="color:var(--admin-gold);">SKU</th>
+              <th style="color:var(--admin-gold);">CATEGORY</th>
+              <th style="color:var(--admin-gold);">PRICE</th>
+              <th style="color:var(--admin-gold);">STOCK QTY</th>
+              <th style="color:var(--admin-gold);">STATUS</th>
+              <th style="color:var(--admin-gold);">RESTOCK</th>
+              <th style="color:var(--admin-gold);">HISTORY</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (!products || products.length === 0) { %>
+              <tr><td colspan="8" class="text-center text-muted py-4">No products found</td></tr>
+            <% } else { %>
+              <% products.forEach(p => {
+                  const stockStatus = p.outOfstock ? 'outofstock' : p.stockQuantity <= 10 ? 'lowstock' : 'instock';
+                  const stockColor  = stockStatus === 'outofstock' ? '#dc3545' : stockStatus === 'lowstock' ? '#fd7e14' : '#28a745';
+                  const stockLabel  = stockStatus === 'outofstock' ? 'Out of Stock' : stockStatus === 'lowstock' ? 'Low Stock' : 'In Stock';
+              %>
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <% if (p.images && p.images[0]) { %>
+                        <img src="<%= p.images[0] %>" alt="" style="width:40px;height:40px;object-fit:cover;border-radius:3px;">
+                      <% } %>
+                      <div>
+                        <div class="fw-semibold small"><%= p.productName %></div>
+                        <div class="text-muted" style="font-size:.75rem;"><%= p.author || '' %></div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="text-muted small"><%= p.sku || '—' %></td>
+                  <td class="small"><%= p.categoryId?.categoryName || '—' %></td>
+                  <td class="text-warning">$<%= p.price.toFixed(2) %></td>
+                  <td>
+                    <span class="fw-bold" style="color:<%= stockColor %>; font-size:1.1rem;">
+                      <%= p.stockQuantity %>
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge" style="background:<%= stockColor %>20; color:<%= stockColor %>; border:1px solid <%= stockColor %>40;">
+                      <%= stockLabel %>
+                    </span>
+                  </td>
+                  <td>
+                    <!-- Inline restock input -->
+                    <div class="d-flex align-items-center gap-1" style="min-width:130px;">
+                      <input type="number" class="form-control form-control-sm bg-dark text-light border-secondary restock-input"
+                             value="<%= p.stockQuantity %>" min="0" style="width:70px;"
+                             data-product-id="<%= p._id %>">
+                      <button class="btn btn-sm btn-outline-warning restock-btn" data-product-id="<%= p._id %>">
+                        <i class="fas fa-save"></i>
+                      </button>
+                    </div>
+                  </td>
+                  <td>
+                    <a href="/admin/stock/<%= p._id %>/history"
+                       class="btn btn-sm" style="color:#17a2b8;" title="View stock history">
+                      <i class="fas fa-history"></i>
+                    </a>
+                  </td>
+                </tr>
+              <% }) %>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <% if (totalPages > 1) { %>
+        <div class="d-flex justify-content-between align-items-center mt-4 flex-wrap gap-2">
+          <span class="text-muted small">
+            Showing <%= ((currentPage-1)*10)+1 %>–<%= Math.min(currentPage*10, totalProducts) %> of <%= totalProducts %> products
+          </span>
+          <nav>
+            <ul class="pagination pagination-sm mb-0">
+              <li class="page-item <%= currentPage===1?'disabled':'' %>">
+                <a class="page-link bg-dark text-light border-secondary"
+                   href="?page=<%= currentPage-1 %>&search=<%= search %>&category=<%= category %>&status=<%= status %>&sort=<%= sort %>">&laquo;</a>
+              </li>
+              <% for(let p=1;p<=totalPages;p++){ %>
+                <% if(p===1||p===totalPages||Math.abs(p-currentPage)<=1){ %>
+                  <li class="page-item <%= p===currentPage?'active':'' %>">
+                    <a class="page-link <%= p===currentPage?'bg-warning text-dark border-warning':'bg-dark text-light border-secondary' %>"
+                       href="?page=<%= p %>&search=<%= search %>&category=<%= category %>&status=<%= status %>&sort=<%= sort %>">
+                      <%= p %>
+                    </a>
+                  </li>
+                <% } else if(Math.abs(p-currentPage)===2){ %>
+                  <li class="page-item disabled"><span class="page-link bg-dark text-muted border-secondary">…</span></li>
+                <% } %>
+              <% } %>
+              <li class="page-item <%= currentPage===totalPages?'disabled':'' %>">
+                <a class="page-link bg-dark text-light border-secondary"
+                   href="?page=<%= currentPage+1 %>&search=<%= search %>&category=<%= category %>&status=<%= status %>&sort=<%= sort %>">&raquo;</a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      <% } %>
+
+    </div>
+  </div>
+</body>
+
+<script>
+
+function showToast(msg, type='danger') {
+    const bg = type === 'success' ? '#28a745' : type === 'warning' ? '#fd7e14' : '#dc3545';
+    const el = document.createElement('div');
+    el.style.cssText = `
+        position:fixed; top:80px; right:20px; z-index:9999;
+        min-width:280px; max-width:360px;
+        background:${bg}; color:#fff;
+        padding:12px 16px; font-size:.9rem; font-weight:600;
+        display:flex; align-items:center; justify-content:space-between;
+        gap:12px; box-shadow:0 4px 16px rgba(0,0,0,.4);
+    `;
+    el.innerHTML = `
+        <span>${msg}</span>
+        <button onclick="this.parentElement.remove()" style="background:none;border:none;color:#fff;font-size:1.1rem;cursor:pointer;line-height:1;">&#x2715;</button>
+    `;
+    document.body.appendChild(el);
+    setTimeout(() => { if (el.parentElement) el.remove(); }, 4000);
+}
+
+document.querySelectorAll('.restock-btn').forEach(btn => {
+  btn.addEventListener('click', async function () {
+    const pid  = this.dataset.productId;
+    const row  = this.closest('tr');
+    const inp  = row.querySelector('.restock-input');
+    const qty  = parseInt(inp.value, 10);
+
+    if (isNaN(qty) || qty < 0) { showToast('Enter a valid stock quantity (0 or more).', 'warning'); return; }
+
+    try {
+      const res  = await fetch(`/admin/stock/${pid}`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ stockQuantity: qty }),
+      });
+      const data = await res.json();
+
+      if (data.ok) {
+        // Update stock qty cell
+        const qtyCell = row.cells[4].querySelector('span');
+        qtyCell.textContent = data.stockQuantity;
+
+        // Update status badge
+        const badgeCell = row.cells[5].querySelector('span');
+        if (data.outOfstock) {
+          qtyCell.style.color = '#dc3545';
+          badgeCell.textContent = 'Out of Stock';
+          badgeCell.style.cssText = 'background:rgba(220,53,69,.125);color:#dc3545;border:1px solid rgba(220,53,69,.25);';
+        } else if (data.stockQuantity <= 10) {
+          qtyCell.style.color = '#fd7e14';
+          badgeCell.textContent = 'Low Stock';
+          badgeCell.style.cssText = 'background:rgba(253,126,20,.125);color:#fd7e14;border:1px solid rgba(253,126,20,.25);';
+        } else {
+          qtyCell.style.color = '#28a745';
+          badgeCell.textContent = 'In Stock';
+          badgeCell.style.cssText = 'background:rgba(40,167,69,.125);color:#28a745;border:1px solid rgba(40,167,69,.25);';
+        }
+
+        row.style.transition = 'background .3s';
+        row.style.background = 'rgba(255,193,7,0.08)';
+        setTimeout(() => { row.style.background = ''; }, 1200);
+      } else {
+        showToast('Error: ' + (data.message || 'Failed'));
+      }
+    } catch (e) {
+      showToast('Network error. Please try again.');
+    }
+  });
+});
+</script>

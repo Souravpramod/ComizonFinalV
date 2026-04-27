@@ -9,7 +9,9 @@ import Cart from '../../models/Cart.js';
 import Coupon   from '../../models/Coupon.js';
 import Wallet    from '../../models/Wallet.js';
 import { getEligibleCoupons, recordCouponUsage ,refundCouponUsage} from './couponController.js';
-import { placeOrderWithWallet } from './walletController.js';
+import { placeOrderWithWallet, refundToWallet } from './walletController.js';
+import { getBestOfferForProduct } from '../admin/offerController.js';
+const GEOAPIFY_KEY = 'b09bff8571104f748963424f37336206';
 
 const SHIPPING_FEE  = 5;
 const FREE_SHIPPING = 500;
@@ -17,12 +19,82 @@ const FREE_SHIPPING = 500;
 export const getCheckout = async (req, res) => {
     if (!req.session?.user?.id) return res.redirect('/login');
 
+  
+    if (req.query.retryOrderId) {
+        try {
+            const retryOrder = await Order.findOne({
+                _id:           req.query.retryOrderId,
+                userId:        req.session.user.id,
+                paymentMethod: 'online',
+                paymentStatus: { $in: ['pending', 'failed'] },
+            }).lean();
+
+            if (retryOrder) {
+                
+                const productIds = retryOrder.items.map(i => i.productId);
+                const liveProducts = await Product.find(
+                    { _id: { $in: productIds } },
+                    'stockQuantity outOfstock isActive'
+                ).lean();
+
+                const stockMap = {};
+                liveProducts.forEach(p => { stockMap[p._id.toString()] = p; });
+
+                const qtyAdjusted = [];   
+                const cartItems   = [];
+
+                for (const oi of retryOrder.items) {
+                    const pid   = oi.productId.toString();
+                    const live  = stockMap[pid];
+
+                    
+                    if (!live || !live.isActive || live.outOfstock || live.stockQuantity < 1) continue;
+
+                    const MAX_QTY  = 6;
+                    const safeQty  = Math.min(oi.quantity, live.stockQuantity, MAX_QTY);
+
+                    if (safeQty < oi.quantity) {
+                        qtyAdjusted.push({ name: oi.productName, from: oi.quantity, to: safeQty });
+                    }
+
+                    cartItems.push({ productId: oi.productId, quantity: safeQty });
+                }
+
+                
+                await Cart.findOneAndUpdate(
+                    { userId: req.session.user.id },
+                    { $set: { items: cartItems } },
+                    { upsert: true }
+                );
+
+                
+                req.session.pendingOrderData = {
+                    retryOrderId:    retryOrder._id.toString(),
+                    orderId:         retryOrder._id.toString(),
+                    isRetry:         true,
+                    orderItems:      retryOrder.items,
+                    subtotal:        retryOrder.subtotal,
+                    shippingFee:     retryOrder.shippingFee,
+                    discount:        retryOrder.discount || 0,
+                    total:           retryOrder.total,
+                    shippingAddress: retryOrder.shippingAddress,
+                    couponId:        retryOrder.couponId ? retryOrder.couponId.toString() : null,
+                 
+                    qtyAdjusted:     qtyAdjusted.length ? qtyAdjusted : null,
+                };
+            }
+        } catch (retryErr) {
+            console.error('retryOrderId restore error:', retryErr.message);
+          
+        }
+    }
+
     try {
         const [cartDoc, user] = await Promise.all([
             Cart.findOne({ userId: req.session.user.id })
                 .populate({
                     path:   'items.productId',
-                    select: 'productName images price stockQuantity outOfstock isActive category',
+                    select: 'productName images price categoryId stockQuantity outOfstock isActive isPremium',
                 })
                 .lean(),
             User.findById(req.session.user.id).lean(),
@@ -35,18 +107,46 @@ export const getCheckout = async (req, res) => {
             return res.redirect('/cart?error=Remove+blocked+items+before+proceeding+to+checkout');
         }
 
-        const cartItems = (cartDoc?.items || [])
-            .filter(i => i.productId && i.productId.isActive && !i.productId.outOfstock)
-            .map(i => ({
-                _id:        i.productId._id.toString(),
-                name:       i.productId.productName,
-                image:      i.productId.images?.[0] || '',
-                price:      i.productId.price,
-                quantity:   i.quantity,
-                stock:      i.productId.stockQuantity,
-                lineTotal:  +(i.productId.price * i.quantity).toFixed(2),
-                categoryId: i.productId.category ? i.productId.category.toString() : null,
-            }));
+        
+        const hasPremiumLocked = (cartDoc?.items || []).some(
+            i => i.productId?.isPremium && !user?.isPremium
+        );
+        if (hasPremiumLocked) {
+            return res.redirect('/cart?error=Your+cart+contains+a+premium+product.+Upgrade+your+membership+or+remove+it+to+proceed.');
+        }
+        
+
+        const rawItems = (cartDoc?.items || [])
+            .filter(i => i.productId && i.productId.isActive && !i.productId.outOfstock);
+
+        const cartItems = await Promise.all(rawItems.map(async (i) => {
+            const prod = i.productId;
+            const offerResult = await getBestOfferForProduct(
+                prod._id,
+                prod.categoryId || prod.category || null,
+                prod.price
+            );
+            const effectivePrice = offerResult ? offerResult.effectivePrice : prod.price;
+            return {
+                _id:            prod._id.toString(),
+                name:           prod.productName,
+                image:          prod.images?.[0] || '',
+                price:          prod.price,
+                effectivePrice,
+                hasOffer:       !!offerResult,
+                offerBadge:     offerResult
+                                  ? (offerResult.discountType === 'flat'
+                                      ? `₹${offerResult.discountValue} OFF`
+                                      : `${offerResult.discountValue}% OFF`)
+                                  : null,
+                quantity:       i.quantity,
+                stock:          prod.stockQuantity,
+                lineTotal:      +(effectivePrice * i.quantity).toFixed(2),
+                categoryId:     prod.categoryId ? prod.categoryId.toString()
+                              : prod.category   ? prod.category.toString()
+                              : null,
+            };
+        }));
 
         if (cartItems.length === 0) return res.redirect('/cart?error=Your+cart+is+empty');
 
@@ -60,6 +160,12 @@ export const getCheckout = async (req, res) => {
         const walletDoc = await Wallet.findOne({ userId: req.session.user.id }).lean();
         const walletBalance = walletDoc ? walletDoc.balance : 0;
  
+        
+        const qtyAdjusted = req.session.pendingOrderData?.qtyAdjusted || null;
+        if (req.session.pendingOrderData?.qtyAdjusted) {
+            delete req.session.pendingOrderData.qtyAdjusted;
+        }
+
         res.render('user/checkout', {
             title:       'Checkout',
             cartItems,
@@ -71,6 +177,7 @@ export const getCheckout = async (req, res) => {
             defaultAddress,
             availableCoupons,
             walletBalance,
+            qtyAdjusted,
             error:   req.query.error   || null,
             success: req.query.success || null,
         });
@@ -94,7 +201,7 @@ export const placeOrder = async (req, res) => {
             Cart.findOne({ userId })
                 .populate({
                     path: 'items.productId',
-                    select: 'productName images price stockQuantity outOfstock isActive sku'
+                    select: 'productName images price stockQuantity outOfstock isActive isPremium sku'
                 })
                 .lean(),
             User.findById(userId).lean(),
@@ -108,6 +215,19 @@ export const placeOrder = async (req, res) => {
         if (validItems.length === 0) {
             return res.redirect('/cart?error=No+valid+items+in+cart');
         }
+
+      
+        const premiumBlocked = validItems.some(
+            i => i.productId?.isPremium && !user?.isPremium
+        );
+        if (premiumBlocked) {
+          
+            return res.json({
+                success: false,
+                message: 'Your cart contains a Premium product. Remove it or upgrade your membership to place the order.',
+            });
+        }
+        
 
         let shippingAddress = {};
         const addressId = req.body.addressId;
@@ -134,23 +254,28 @@ export const placeOrder = async (req, res) => {
 
             if (!product || !product.isActive) continue;
 
+           
             if (product.stockQuantity < cartItem.quantity) {
                 return res.redirect(`/cart?error=Insufficient+stock+for+${encodeURIComponent(product.productName)}`);
             }
 
-            product.stockQuantity -= cartItem.quantity;
-            product.outOfstock = product.stockQuantity === 0;
-            await product.save();
+            const offerResult    = await getBestOfferForProduct(
+                product._id,
+                product.categoryId,
+                product.price
+            );
+            const effectivePrice = offerResult ? offerResult.effectivePrice : product.price;
 
             orderItems.push({
-                productId: product._id,
+                productId:   product._id,
                 productName: product.productName,
-                sku: product.sku || '',
-                image: product.images?.[0] || '',
-                price: product.price,
-                quantity: cartItem.quantity,
-                lineTotal: +(product.price * cartItem.quantity).toFixed(2),
-                itemStatus: 'pending',
+                sku:         product.sku || '',
+                image:       product.images?.[0] || '',
+                price:       product.price,
+                effectivePrice,
+                quantity:    cartItem.quantity,
+                lineTotal:   +(effectivePrice * cartItem.quantity).toFixed(2),
+                itemStatus:  'pending',
                 unitStatuses: Array.from({ length: cartItem.quantity }, (_, i) => ({
                     unitIndex: i,
                     status: 'pending'
@@ -195,7 +320,24 @@ export const placeOrder = async (req, res) => {
 
             const discountedTotal = +Math.max(0, total - discount).toFixed(2);
 
+            
+            const draftOrder = await Order.create({
+                userId,
+                items:           orderItems,
+                subtotal,
+                shippingFee,
+                discount:        discount || 0,
+                total:           discountedTotal,
+                shippingAddress,
+                paymentMethod:   'online',
+                paymentStatus:   'pending',
+                status:          'pending',
+                couponId:        couponId || null,
+            });
+
             req.session.pendingOrderData = {
+                retryOrderId: draftOrder._id.toString(),
+                orderId:      draftOrder._id.toString(),  
                 orderItems,
                 subtotal,
                 shippingFee,
@@ -218,6 +360,7 @@ export const placeOrder = async (req, res) => {
                 amount:          rzpOrder.amount,
                 currency:        rzpOrder.currency,
                 key:             process.env.RAZORPAY_KEY_ID,
+                draftOrderId:    draftOrder._id,
             });
         }
 
@@ -278,11 +421,13 @@ export const placeOrder = async (req, res) => {
 
         if (codCouponId) await recordCouponUsage(codCouponId, userId);
 
-       
-        await Cart.findOneAndUpdate(
-            { userId },
-            { $set: { items: [] } }
-        );
+        
+        for (const oi of orderItems) {
+            const p = await Product.findById(oi.productId);
+            if (p) { p.stockQuantity = Math.max(0, p.stockQuantity - oi.quantity); p.outOfstock = p.stockQuantity === 0; await p.save(); }
+        }
+
+        await Cart.findOneAndUpdate({ userId }, { $set: { items: [] } });
 
         return res.json({ success: true, redirectUrl: `/orders/${order._id}/success` });
 
@@ -372,6 +517,9 @@ export const getOrders = async (req, res) => {
             activePage: 'orders', error: 'Failed to load orders', success: null,
         });
     }
+
+
+    
 };
 
 
@@ -421,10 +569,27 @@ export const cancelItem = async (req, res) => {
             return res.redirect(`/orders/${orderId}?error=Item+cannot+be+cancelled+at+this+stage`);
 
 
-        await Product.findByIdAndUpdate(item.productId, {
-            $inc: { stockQuantity: item.quantity },
-            outOfstock: false,
-        });
+        const paidMethods = ['online', 'wallet'];
+        const stockWasDeducted = order.paymentStatus !== 'failed';
+
+        if (stockWasDeducted) {
+            await Product.findByIdAndUpdate(item.productId, {
+                $inc: { stockQuantity: item.quantity },
+                outOfstock: false,
+            });
+        }
+
+      
+        const refundAmount     = +item.lineTotal.toFixed(2);
+        const originalShipping = order.shippingFee;
+
+    
+        const otherItems        = order.items.filter(i => i._id.toString() !== itemId);
+        const othersAllTerminal = otherItems.every(i =>
+            ['cancelled', 'returned'].includes(i.itemStatus)
+        );
+        const shippingRefund = othersAllTerminal ? originalShipping : 0;
+        const totalRefund    = +(refundAmount + shippingRefund).toFixed(2);
 
         item.itemStatus   = 'cancelled';
         item.cancelReason = reason;
@@ -432,15 +597,25 @@ export const cancelItem = async (req, res) => {
         item.unitStatuses.forEach(u => { u.status = 'cancelled'; });
 
    
+        const remainingStatuses = order.items.map(i => i.itemStatus);
+        const allTerminal  = remainingStatuses.every(s => ['cancelled', 'returned'].includes(s));
+        const allCancelled = remainingStatuses.every(s => s === 'cancelled');
+        if (allTerminal) {
+            order.status        = allCancelled ? 'cancelled' : 'returned';
+            order.paymentStatus = paidMethods.includes(order.paymentMethod) ? 'refunded' : order.paymentStatus;
+        }
+
         const activeQty   = item.unitStatuses.filter(u => u.status !== 'cancelled').length;
-        item.lineTotal    = +(item.price * activeQty).toFixed(2);
+        item.lineTotal    = +(item.price * activeQty).toFixed(2);  
 
 
-        const newSubtotal = +order.items
-            .filter(i => i.itemStatus !== 'cancelled')
-            .reduce((s, i) => s + i.lineTotal, 0)
-            .toFixed(2);
-        const newShipping   = newSubtotal >= FREE_SHIPPING ? 0 : SHIPPING_FEE;
+        const terminalStatuses = ['cancelled', 'returned'];
+        const activeItems = order.items.filter(i => !terminalStatuses.includes(i.itemStatus));
+        const newSubtotal = +activeItems.reduce((s, i) => s + i.lineTotal, 0).toFixed(2);
+
+       
+        const newShipping   = activeItems.length === 0 ? 0
+                            : newSubtotal >= FREE_SHIPPING ? 0 : SHIPPING_FEE;
         order.subtotal      = newSubtotal;
         order.shippingFee   = newShipping;
         order.total         = +(newSubtotal + newShipping).toFixed(2);
@@ -457,12 +632,28 @@ export const cancelItem = async (req, res) => {
             order.status = hasDelivered ? 'delivered' : activeItems[0]?.itemStatus || 'processing';
         }
 
+        
         await order.save();
-        const allCancelled = order.items.every(i => i.itemStatus === 'cancelled');
+
+        if (totalRefund > 0 && paidMethods.includes(order.paymentMethod)) {
+            await refundToWallet(
+                order.userId.toString(),
+                totalRefund,
+                order._id,
+                shippingRefund > 0
+                    ? `Refund for cancelled item "${item.productName}" + shipping fee in order ${order.orderId}`
+                    : `Refund for cancelled item "${item.productName}" in order ${order.orderId}`
+            );
+        }
+
         if (allCancelled && order.couponId) {
             await refundCouponUsage(order.couponId, order.userId);
         }
-        return res.redirect(`/orders/${orderId}?success=Item+cancelled+successfully`);
+
+        const successMsg = paidMethods.includes(order.paymentMethod) && totalRefund > 0
+            ? `Item+cancelled.+₹${totalRefund.toFixed(2)}+refunded+to+your+wallet.`
+            : `Item+cancelled+successfully`;
+        return res.redirect(`/orders/${orderId}?success=${successMsg}`);
 
     } catch (err) {
         console.error('cancelItem error:', err.message);
@@ -488,12 +679,17 @@ export const cancelOrder = async (req, res) => {
             return res.redirect(`/orders/${orderId}?error=Order+cannot+be+cancelled+at+this+stage`);
 
 
+
+        const stockWasDeducted = order.paymentStatus !== 'failed';
+
         for (const item of order.items) {
             if (item.itemStatus !== 'cancelled') {
-                await Product.findByIdAndUpdate(item.productId, {
-                    $inc: { stockQuantity: item.quantity },
-                    outOfstock: false,
-                });
+                if (stockWasDeducted) {
+                    await Product.findByIdAndUpdate(item.productId, {
+                        $inc: { stockQuantity: item.quantity },
+                        outOfstock: false,
+                    });
+                }
                 item.itemStatus   = 'cancelled';
                 item.cancelReason = reason;
                 item.unitStatuses.forEach(u => { u.status = 'cancelled'; });
@@ -504,8 +700,31 @@ export const cancelOrder = async (req, res) => {
         order.paymentStatus = 'refunded';
         order.items.forEach(i => { i.attention = 1; });
 
+
+        const paidMethods    = ['online', 'wallet'];
+        const itemsRefund    = +order.items.reduce((s, i) => s + i.lineTotal, 0).toFixed(2);
+        const shippingRefund = order.shippingFee || 0;
+        const refundAmount   = +(itemsRefund + shippingRefund).toFixed(2);
+
+        order.subtotal    = 0;
+        order.shippingFee = 0;
+        order.total       = 0;
+
         await order.save();
-        return res.redirect(`/orders/${orderId}?success=Order+cancelled+successfully`);
+
+        if (refundAmount > 0 && stockWasDeducted && paidMethods.includes(order.paymentMethod)) {
+            await refundToWallet(
+                order.userId.toString(),
+                refundAmount,
+                order._id,
+                `Refund for cancelled order ${order.orderId}`
+            );
+        }
+
+        const successMsg = paidMethods.includes(order.paymentMethod) && refundAmount > 0
+            ? `Order+cancelled.+₹${refundAmount.toFixed(2)}+refunded+to+your+wallet.`
+            : `Order+cancelled+successfully`;
+        return res.redirect(`/orders/${orderId}?success=${successMsg}`);
 
     } catch (err) {
         console.error('cancelOrder error:', err.message);
@@ -599,7 +818,8 @@ export const returnOrder = async (req, res) => {
 
        
         for (const item of order.items) {
-            if (item.itemStatus === 'delivered') {
+            
+            if (item.itemStatus === 'delivered' && !item.returnDeniedReason && item.flaggedresponse===0) {
                 item.itemStatus   = 'return_requested';
                 item.returnReason = reason;
                 item.attention    = 1;
@@ -656,7 +876,8 @@ export const createRazorpayOrder = async (req, res) => {
 
 
 export const verifyRazorpayPayment = async (req, res) => {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature} = req.body;
     const userId = req.session.user.id;
 
     try {
@@ -674,23 +895,43 @@ export const verifyRazorpayPayment = async (req, res) => {
         }
 
   
-        const order = await Order.create({
-            userId,
-            items:          pending.orderItems,
-            subtotal:       pending.subtotal,
-            shippingFee:    pending.shippingFee,
-            discount:       pending.discount || 0,
-            total:          pending.total,
-            shippingAddress: pending.shippingAddress,
-            paymentMethod:  'online',
-            paymentStatus:  'paid',
-            status:         'pending',
-        });
+        let order;
+        if (pending.retryOrderId) {
+            
+            order = await Order.findByIdAndUpdate(
+                pending.retryOrderId,
+                {
+                    paymentStatus: 'paid',
+                    status:        'pending',
+                    
+                    subtotal:      pending.subtotal,
+                    shippingFee:   pending.shippingFee,
+                    discount:      pending.discount || 0,
+                    total:         pending.total,
+                },
+                { new: true }
+            );
+        }
+        if (!order) {
+            order = await Order.create({
+                userId,
+                items:           pending.orderItems,
+                subtotal:        pending.subtotal,
+                shippingFee:     pending.shippingFee,
+                discount:        pending.discount || 0,
+                total:           pending.total,
+                shippingAddress: pending.shippingAddress,
+                paymentMethod:   'online',
+                paymentStatus:   'paid',
+                status:          'pending',
+            });
+        }
 
 
         if (pending.couponId) {
             await recordCouponUsage(pending.couponId, userId);
         }
+        
 
 
         await Payment.create({
@@ -698,12 +939,38 @@ export const verifyRazorpayPayment = async (req, res) => {
             userId,
             gateway:          'razorpay',
             gatewayOrderId:   razorpay_order_id,
+           
             gatewayPaymentId: razorpay_payment_id,
             gatewaySignature: razorpay_signature,
             amount:           Math.round(pending.total * 100),
             status:           'captured',
         });
 
+        
+        
+        
+        
+        if (!pending.isRetry) {
+           
+        for (const oi of pending.orderItems) {
+            const p = await Product.findById(oi.productId);
+            if (p) {
+                p.stockQuantity = Math.max(0, p.stockQuantity - oi.quantity);
+                p.outOfstock    = p.stockQuantity === 0;
+                await p.save();
+            }
+        }
+        } else {
+            
+            for (const oi of pending.orderItems) {
+                const p = await Product.findById(oi.productId);
+                if (p) {
+                    p.stockQuantity = Math.max(0, p.stockQuantity - oi.quantity);
+                    p.outOfstock    = p.stockQuantity === 0;
+                    await p.save();
+                }
+            }
+        }
 
         await Cart.findOneAndUpdate({ userId }, { $set: { items: [] } });
         delete req.session.pendingOrderData;
@@ -730,6 +997,27 @@ export const handlePaymentFailure = async (req, res) => {
             }
         );
 
+        
+        const pending = req.session?.pendingOrderData;
+        if (pending) {
+            const orderIdToUpdate = pending.retryOrderId || pending.orderId || null;
+            if (orderIdToUpdate) {
+                await Order.findByIdAndUpdate(orderIdToUpdate, {
+                    status:        'failed',
+                    paymentStatus: 'failed',
+                });
+            } else if (razorpay_order_id) {
+               
+                const failedPayment = await Payment.findOne({ gatewayOrderId: razorpay_order_id });
+                if (failedPayment?.orderId) {
+                    await Order.findByIdAndUpdate(failedPayment.orderId, {
+                        status:        'failed',
+                        paymentStatus: 'failed',
+                    });
+                }
+            }
+            
+        }
 
         return res.redirect(`/checkout/payment-failed?reason=${encodeURIComponent(error_description || 'Payment failed')}`);
 

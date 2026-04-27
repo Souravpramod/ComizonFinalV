@@ -46,17 +46,14 @@ export const getPremium = (req, res) => {
 
     const user = req.session.user;
 
-    
     if (!user) {
-        return res.render('user/premiumLanding', { title: 'Premium' });
+        return res.render('user/premiumLanding', { title: 'Premium', isLoggedIn: false });
     }
 
-    
     if (!user.isPremium) {
-        return res.render('user/premiumLanding', { title: 'Premium' });
+        return res.render('user/premiumLanding', { title: 'Premium', isLoggedIn: true });
     }
 
-    
     return renderListingPage(
         req,
         res,

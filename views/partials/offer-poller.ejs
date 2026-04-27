@@ -1,0 +1,217 @@
+<script>
+
+(function (isCurrentUserPremium) {
+    const INTERVAL = 800;
+    
+    let _isUserPremium = isCurrentUserPremium;
+
+    function getProductIds() {
+        return [...document.querySelectorAll('[data-product-id]')]
+            .map(el => el.dataset.productId)
+            .filter(Boolean);
+    }
+
+    function showOfferToast(msg, type = 'info') {
+        const bg = type === 'danger' ? '#dc3545' : type === 'success' ? '#28a745' : '#E63946';
+        const el = document.createElement('div');
+        el.style.cssText = `
+            position:fixed;bottom:24px;right:24px;z-index:9999;
+            min-width:300px;max-width:380px;
+            background:${bg};color:#fff;
+            padding:12px 16px;font-size:.875rem;font-weight:600;
+            display:flex;align-items:flex-start;gap:10px;
+            box-shadow:0 4px 20px rgba(0,0,0,.5);
+        `;
+        el.innerHTML = `
+            <i class="fas fa-tag mt-1"></i>
+            <span style="flex:1">${msg}</span>
+            <button onclick="this.parentElement.remove()" style="background:none;border:none;color:#fff;font-size:1rem;cursor:pointer;line-height:1;">&#x2715;</button>
+        `;
+        document.body.appendChild(el);
+        setTimeout(() => { if (el.parentElement) el.remove(); }, 6000);
+    }
+
+    function updateCard(el, data) {
+        const priceEl = el.querySelector('[data-price]');
+        const badgeEl = el.querySelector('[data-offer-badge]');
+        const origEl  = el.querySelector('[data-original-price]');
+        const btnEl   = el.querySelector('[data-add-cart-btn]');
+
+        if (!priceEl) return null;
+
+        const rawOld       = priceEl.dataset.effectivePrice;
+        const oldEffective = rawOld !== undefined ? parseFloat(rawOld) : null;
+        const newEffective = data.effectivePrice;
+       
+        const changed      = oldEffective !== null && Math.abs(oldEffective - newEffective) > 0.01;
+
+      
+        priceEl.innerHTML = `$${newEffective.toFixed(2)}`;
+        priceEl.dataset.effectivePrice = newEffective;
+
+        if (data.hasOffer) {
+            if (badgeEl) {
+              
+                badgeEl.innerHTML      = `<i class="fas fa-tag me-1"></i>${data.offerBadge}`;
+                badgeEl.style.color    = data.badgeColor;
+                badgeEl.style.display  = '';
+            }
+            if (origEl) {
+                origEl.innerHTML     = `$${data.originalPrice.toFixed(2)}`;
+                origEl.style.display = '';
+            }
+        } else {
+            if (badgeEl) badgeEl.style.display = 'none';
+            if (origEl)  origEl.style.display  = 'none';
+        }
+
+        
+        if (!data.isActive || data.outOfstock) {
+            if (btnEl) {
+                btnEl.disabled = true;
+                btnEl.innerHTML = data.outOfstock
+                    ? '<i class="fas fa-times me-2"></i>Out of Stock'
+                    : '<i class="fas fa-ban me-2"></i>Blocked';
+            }
+        }
+
+        
+        const isPremiumLocked  = data.isPremium && !_isUserPremium;
+        
+        
+        const ssKey            = `premiumLocked_${el.dataset.productId}`;
+        const wasPremiumLocked = sessionStorage.getItem(ssKey) === '1';
+
+        if (isPremiumLocked) {
+            sessionStorage.setItem(ssKey, '1');
+            el.dataset.premiumLocked = '1';
+            
+            if (btnEl && !btnEl.disabled) {
+                btnEl.disabled  = true;
+                btnEl.innerHTML = '<i class="fas fa-crown me-2"></i>Premium Only';
+                btnEl.title     = 'Upgrade to Premium to purchase this product';
+            }
+
+            if (!el.querySelector('.premium-lock-badge')) {
+                const badge = document.createElement('span');
+                badge.className   = 'badge bg-warning text-dark premium-lock-badge';
+                badge.style.cssText = 'position:absolute;top:8px;left:8px;z-index:2;font-size:.7rem;';
+                badge.innerHTML   = '<i class="fas fa-crown me-1"></i>Premium Only';
+
+                const imgWrapper = el.querySelector('.position-relative') || el;
+                imgWrapper.style.position = 'relative';
+                imgWrapper.appendChild(badge);
+            }
+        } else if (wasPremiumLocked && !isPremiumLocked) {
+     
+            sessionStorage.removeItem(ssKey);
+            delete el.dataset.premiumLocked;
+            el.querySelector('.premium-lock-badge')?.remove();
+            if (btnEl) {
+                btnEl.disabled  = false;
+                btnEl.innerHTML = '<i class="fas fa-cart-plus me-2"></i>Add';
+                btnEl.title     = '';
+            }
+        }
+        
+
+        const productName = el.querySelector('[data-product-name]')?.textContent?.trim()
+                         || el.querySelector('.card-title')?.textContent?.trim()
+                         || el.querySelector('h5')?.textContent?.trim()
+                         || 'A product';
+
+
+        const premiumStateChanged = isPremiumLocked !== wasPremiumLocked;
+        return (changed || premiumStateChanged)
+            ? { name: productName, newEffective, oldEffective, hasOffer: data.hasOffer, isPremiumLocked, premiumStateChanged }
+            : null;
+    }
+
+    async function pollOffers() {
+        const ids = getProductIds();
+        if (ids.length === 0) return;
+
+        try {
+            const res  = await fetch(`/offers/price-check?ids=${ids.join(',')}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            if (!data.ok) return;
+
+            const changes = [];
+
+            for (const product of data.products) {
+                const card = document.querySelector(`[data-product-id="${product._id}"]`);
+                if (!card) continue;
+                const change = updateCard(card, product);
+                if (change) changes.push(change);
+            }
+
+            
+            
+            const newlyPremium  = changes.filter(c => c.premiumStateChanged && c.isPremiumLocked);
+            const unlockedPrem  = changes.filter(c => c.premiumStateChanged && !c.isPremiumLocked);
+            
+            const priceChanges  = changes.filter(c => !c.premiumStateChanged);
+
+            if (newlyPremium.length === 1) {
+                showOfferToast(
+                    `<i class="fas fa-crown me-1"></i> <strong>${newlyPremium[0].name}</strong> is now <strong>Premium Only</strong>. Upgrade your membership to purchase it.`,
+                    'danger'
+                );
+            } else if (newlyPremium.length > 1) {
+                showOfferToast(
+                    `<i class="fas fa-crown me-1"></i> ${newlyPremium.length} products are now <strong>Premium Only</strong>. Upgrade your membership to purchase them.`,
+                    'danger'
+                );
+            }
+
+            if (unlockedPrem.length === 1) {
+                showOfferToast(
+                    `<i class="fas fa-crown me-1"></i> <strong>${unlockedPrem[0].name}</strong> is no longer Premium Only — you can now add it to your cart!`,
+                    'success'
+                );
+            } else if (unlockedPrem.length > 1) {
+                showOfferToast(
+                    `<i class="fas fa-crown me-1"></i> ${unlockedPrem.length} products are no longer Premium Only — available to all members!`,
+                    'success'
+                );
+            }
+
+            if (priceChanges.length === 1) {
+                const c = priceChanges[0];
+                if (c.hasOffer) {
+                    showOfferToast(`🏷️ Offer updated on <strong>${c.name}</strong>! Now $${c.newEffective.toFixed(2)}`);
+                } else {
+                    showOfferToast(`Offer removed from <strong>${c.name}</strong>. Price is now $${c.newEffective.toFixed(2)}`, 'danger');
+                }
+            } else if (priceChanges.length > 1) {
+                showOfferToast(`💰 Prices updated on ${priceChanges.length} items — check the latest deals!`);
+            }
+
+        } catch (_) { /* silent */ }
+    }
+
+    
+    
+
+    async function pollUserStatus() {
+        try {
+            const res  = await fetch('/user/my-status');
+            if (!res.ok) return;
+            const data = await res.json();
+            const wasUserPremium = _isUserPremium;
+            _isUserPremium = !!data.isPremium;
+
+  
+            if (wasUserPremium !== _isUserPremium) {
+                pollOffers();
+            }
+        } catch (_) { /* silent */ }
+    }
+
+    pollOffers();
+    pollUserStatus();
+    setInterval(pollOffers, INTERVAL);
+    setInterval(pollUserStatus, 15000);
+})(<%- (locals.user?.isPremium || locals.currentUser?.isPremium) ? 'true' : 'false' %>);
+</script>

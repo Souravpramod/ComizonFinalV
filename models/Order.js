@@ -22,6 +22,7 @@ const orderItemSchema = new mongoose.Schema({
     },
     cancelReason: { type: String, default: '' },
     returnReason: { type: String, default: '' },
+    returnDeniedReason: { type: String, default: '' },
     attention:{type:Number,default:0},
     flaggedresponse:{type:Number,default:0},
     // Per-UNIT statuses (admin-facing: each physical copy tracked individually)
@@ -47,7 +48,7 @@ const orderSchema = new mongoose.Schema({
     // Overall order status — derived from item statuses
     status: {
         type: String,
-        enum: ['pending','processing','shipped','out_for_delivery','delivered','cancelled','return_requested','returned'],
+        enum: ['pending','processing','shipped','out_for_delivery','delivered','cancelled','return_requested','returned','failed'],
         default: 'pending',
     },
     attention:{type:Number,default:0},
@@ -65,7 +66,8 @@ const orderSchema = new mongoose.Schema({
     },
 
     paymentMethod: { type: String, default: 'cod' },
-    paymentStatus: { type: String, enum: ['pending','paid','refunded'], default: 'pending' },
+    paymentStatus: { type: String, enum: ['pending','paid','refunded','failed'], default: 'pending' },
+    couponId:      { type: mongoose.Schema.Types.ObjectId, ref: 'Coupon', default: null },
 
     notes:     { type: String, default: '' },
     orderedAt: { type: Date, default: Date.now },
@@ -74,13 +76,19 @@ const orderSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 
+
 // Auto-generate readable orderId before first save
 orderSchema.pre('save', async function (next) {
     if (!this.orderId) {
         this.orderId = `ORD-${Date.now()}`;
     }
+    if (this.paymentMethod === 'online' && this.paymentStatus === 'pending') {
+        this.status = 'failed';
+    }
     
 });
+
+
 
 const Order = mongoose.model('Order', orderSchema);
 export default Order;

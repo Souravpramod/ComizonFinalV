@@ -27,7 +27,7 @@
             <h4 class="mb-0" style="color: var(--admin-gold);">Product Management</h4>
             <p class="text-muted small mb-0">Manage your comic books and collectibles</p>
           </div>
-          <button class="btn btn-admin-primary" data-bs-toggle="modal" data-bs-target="#addProductModal">
+          <button class="btn btn-admin-primary" data-bs-toggle="offcanvas" data-bs-target="#addProductModal">
             <i class="fas fa-plus me-2"></i>Add New Product
           </button>
         </div>
@@ -222,90 +222,118 @@
   </div>
 
 
-  <div class="modal fade" id="addProductModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content bg-dark text-white border-secondary">
-        <div class="modal-header border-secondary">
-          <h5 class="modal-title">
-            <i class="fas fa-plus me-2" style="color: var(--admin-gold);"></i>Add New Product
-          </h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-        </div>
-        <form id="addProductForm" action="/admin/products/add" method="POST" enctype="multipart/form-data">
-          <div class="modal-body">
-            <div class="row g-3">
-              <div class="col-md-6">
-                <label class="form-label">Product Name <span class="text-danger">*</span></label>
-                <input type="text" class="form-control bg-dark text-white border-secondary" name="productName" id="add_productName">
-                <div class="invalid-feedback" id="err_productName"></div>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">Category <span class="text-danger">*</span></label>
-                <select class="form-select bg-dark text-white border-secondary" name="categoryId" id="add_categoryId">
-                  <option value="">Select Category</option>
-                  <% if (locals.categories) { %>
-                    <% categories.forEach(cat => { %>
-                      <option value="<%= cat._id %>"><%= cat.categoryName %></option>
-                    <% }) %>
-                  <% } %>
-                </select>
-                <div class="invalid-feedback" id="err_categoryId"></div>
-              </div>
-              <div class="col-md-6">
+  <!-- ── ADD PRODUCT OFFCANVAS (slides from right) ── -->
+  <div class="offcanvas offcanvas-end bg-dark text-white" tabindex="-1" id="addProductModal" style="width:780px;max-width:98vw;">
+    <div class="offcanvas-header border-bottom border-secondary">
+      <h5 class="offcanvas-title">
+        <i class="fas fa-plus me-2" style="color:var(--admin-gold);"></i>Add New Product
+      </h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+
+    <form id="addProductForm" action="/admin/products/add" method="POST" enctype="multipart/form-data" style="display:flex;flex-direction:column;height:100%;min-height:0;">
+      <div class="offcanvas-body overflow-auto" style="flex:1 1 0;min-height:0;">
+        <div class="row g-3">
+
+          <!-- ── LEFT: product fields ── -->
+          <div class="col-md-7">
+            <div class="mb-3">
+              <label class="form-label">Product Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control bg-dark text-white border-secondary" name="productName" id="add_productName">
+              <div class="invalid-feedback" id="err_productName"></div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Category <span class="text-danger">*</span></label>
+              <select class="form-select bg-dark text-white border-secondary" name="categoryId" id="add_categoryId">
+                <option value="">Select Category</option>
+                <% if (locals.categories) { %>
+                  <% categories.forEach(cat => { %>
+                    <option value="<%= cat._id %>"><%= cat.categoryName %></option>
+                  <% }) %>
+                <% } %>
+              </select>
+              <div class="invalid-feedback" id="err_categoryId"></div>
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-6">
                 <label class="form-label">Author</label>
                 <input type="text" class="form-control bg-dark text-white border-secondary" name="author">
               </div>
-              <div class="col-md-6">
+              <div class="col-6">
                 <label class="form-label">Publisher</label>
                 <input type="text" class="form-control bg-dark text-white border-secondary" name="publisher">
               </div>
-              <div class="col-md-4">
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-6">
                 <label class="form-label">Price ($) <span class="text-danger">*</span></label>
                 <input type="number" class="form-control bg-dark text-white border-secondary" name="price" id="add_price" step="0.01">
                 <div class="invalid-feedback" id="err_price"></div>
               </div>
-              <div class="col-md-4">
-                <label class="form-label">Stock Quantity <span class="text-danger">*</span></label>
-                <input type="number" class="form-control bg-dark text-white border-secondary" name="stockQuantity" id="add_stockQuantity">
-                <div class="invalid-feedback" id="err_stockQuantity"></div>
-              </div>
-              <div class="col-md-4">
+              <div class="col-6">
                 <label class="form-label">Type</label>
                 <select class="form-select bg-dark text-white border-secondary" name="isPremium">
                   <option value="false">Regular</option>
                   <option value="true">Premium</option>
                 </select>
               </div>
-              <div class="col-12">
-                <label class="form-label">Description</label>
-                <textarea class="form-control bg-dark text-white border-secondary" name="description" rows="3"></textarea>
-              </div>
-              <div class="col-12">
-                <label class="form-label">Product Images</label>
-                <div class="mb-3">
-                  <input type="file" name="image_0" id="addImage0" class="form-control mb-1">
-                  <div id="addPreview0"></div>
-                </div>
-                <div class="mb-3">
-                  <input type="file" name="image_1" id="addImage1" class="form-control mb-1">
-                  <div id="addPreview1"></div>
-                </div>
-                <div class="mb-3">
-                  <input type="file" name="image_2" id="addImage2" class="form-control mb-1">
-                  <div id="addPreview2"></div>
-                </div>
-              </div>
             </div>
+            <div class="mb-3">
+              <label class="form-label">Description</label>
+              <textarea class="form-control bg-dark text-white border-secondary" name="description" rows="5"></textarea>
+            </div>
+            <!-- Stock hidden — default 0, managed by Stock Manager -->
+            <input type="hidden" name="stockQuantity" value="0">
           </div>
-          <div class="modal-footer border-secondary">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-admin-primary">
-              <i class="fas fa-plus me-2"></i>Add Product
-            </button>
+
+          <!-- ── RIGHT: image slots ── -->
+          <div class="col-md-5">
+            <label class="form-label">Product Images</label>
+            <small class="text-muted d-block mb-3">Pick → crop → Save Image for each slot, then click Add Product.</small>
+
+            <% for(let idx = 0; idx < 3; idx++){ %>
+            <div class="mb-3 p-2 border border-secondary rounded-0" id="addImageSlot<%= idx %>">
+              <div class="small text-muted mb-1 fw-semibold">Image <%= idx + 1 %></div>
+
+              <!-- Preview -->
+              <div id="addPreview<%= idx %>" class="mb-2">
+                <div style="width:100%;height:140px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;color:#555;font-size:12px;border:1px dashed #444;">
+                  Empty
+                </div>
+              </div>
+
+              <!-- File picker -->
+              <input type="file"
+                     id="addImage<%= idx %>"
+                     class="form-control form-control-sm mb-2 bg-dark text-white border-secondary"
+                     data-index="<%= idx %>"
+                     accept=".jpg,.jpeg,.png,.heif,.heic,.avif">
+
+              <!-- Status -->
+              <div class="small mb-2" id="addSlotStatus<%= idx %>">
+                <span class="text-muted">No image</span>
+              </div>
+
+              <button type="button"
+                      class="btn btn-sm btn-warning rounded-0 w-100 add-save-image-btn"
+                      data-index="<%= idx %>">
+                <i class="fas fa-save me-1"></i>Save Image <%= idx + 1 %>
+              </button>
+            </div>
+            <% } %>
           </div>
-        </form>
+
+        </div>
       </div>
-    </div>
+
+      <!-- Footer sticks to bottom -->
+      <div class="p-3 border-top border-secondary d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="offcanvas">Cancel</button>
+        <button type="submit" class="btn btn-admin-primary">
+          <i class="fas fa-plus me-2"></i>Add Product
+        </button>
+      </div>
+    </form>
   </div>
 
   <div class="modal fade" id="statusModal" tabindex="-1">
@@ -332,88 +360,192 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 <script>
-    const addCroppers = {};
 
-    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/heif', 'image/heic', 'image/avif'];
-const ALLOWED_EXTS  = /\.(jpe?g|png|heif|heic|avif)$/i;
+  function showToast(msg, type='danger') {
+    const id = 'toast_' + Date.now();
+    const bg = type === 'success' ? 'bg-success' : type === 'warning' ? 'bg-warning text-dark' : 'bg-danger';
+    const el = document.createElement('div');
+    el.id = id;
+    el.className = `toast align-items-center text-white border-0 ${bg} position-fixed rounded-0`;
+    el.style.cssText = 'top:80px;right:20px;z-index:9999;min-width:280px;';
+    el.setAttribute('role','alert');
+    el.innerHTML = `<div class="d-flex"><div class="toast-body fw-semibold">${msg}</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+    document.body.appendChild(el);
+    const t = new bootstrap.Toast(el, { delay: 4000 });
+    t.show();
+    el.addEventListener('hidden.bs.toast', () => el.remove());
+}
 
-function isValidImageFile(file) {
+    // ── ADD MODAL: image cropping + staged save ───────────────────────────────
+  const addCroppers = {};
+  const addStagedBlobs = {}; // stores cropped blobs after "Save Image" clicked
+
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/heif', 'image/heic', 'image/avif'];
+  const ALLOWED_EXTS  = /\.(jpe?g|png|heif|heic|avif)$/i;
+
+  function isValidImageFile(file) {
     return ALLOWED_TYPES.includes(file.type) || ALLOWED_EXTS.test(file.name);
-}
+  }
 
-for (let i = 0; i < 3; i++) {
+  // File picker → init cropper
+  for (let i = 0; i < 3; i++) {
     document.getElementById('addImage' + i).addEventListener('change', function (e) {
-        const file = e.target.files[0];
-        if (!file) return;
+      const file = e.target.files[0];
+      if (!file) return;
 
-        if (!isValidImageFile(file)) {
-            alert('Invalid file type for Image ' + (i + 1) + '.\nAllowed formats: JPEG, JPG, PNG, HEIF, HEIC, AVIF');
-            this.value = '';
-            return;
-        }
+      if (!isValidImageFile(file)) {
+        showToast('Invalid file type for Image ' + (i + 1) + '. Allowed: JPEG, JPG, PNG, HEIF, HEIC, AVIF', 'warning');
+        this.value = '';
+        return;
+      }
 
-        const reader = new FileReader();
-        reader.onload = function (ev) {
-            const preview = document.getElementById('addPreview' + i);
-            preview.innerHTML = '<img id="addCropImg' + i + '" style="max-width:100%;margin-top:6px;">';
-            const img = document.getElementById('addCropImg' + i);
-            img.src = ev.target.result;
-            if (addCroppers[i]) addCroppers[i].destroy();
-            addCroppers[i] = new Cropper(img, { aspectRatio: 3 / 4, viewMode: 1 });
-        };
-        reader.readAsDataURL(file);
+      // Clear any previously staged blob for this slot
+      delete addStagedBlobs[i];
+      document.getElementById('addSlotStatus' + i).innerHTML = '<span class="text-info">Crop the image, then click Save Image.</span>';
+
+      const reader = new FileReader();
+      reader.onload = function (ev) {
+        const preview = document.getElementById('addPreview' + i);
+        preview.innerHTML = '<img id="addCropImg' + i + '" style="max-width:200px;">';
+        const img = document.getElementById('addCropImg' + i);
+        img.src = ev.target.result;
+        if (addCroppers[i]) addCroppers[i].destroy();
+        addCroppers[i] = new Cropper(img, { aspectRatio: 3 / 4, viewMode: 1 });
+      };
+      reader.readAsDataURL(file);
     });
-}
+  }
 
-    document.getElementById('addProductForm').addEventListener('submit', async function (e) {
-        e.preventDefault();
+  // "Save Image" per slot — crops and stages the blob (does NOT submit form)
+  document.querySelectorAll('.add-save-image-btn').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      const i = parseInt(this.getAttribute('data-index'));
+      const statusEl = document.getElementById('addSlotStatus' + i);
 
-        ['productName', 'categoryId', 'price', 'stockQuantity'].forEach(field => {
-            const input = document.getElementById('add_' + field);
-            const errEl = document.getElementById('err_' + field);
-            if (input) input.classList.remove('is-invalid');
-            if (errEl) errEl.textContent = '';
+      if (!addCroppers[i]) {
+        showToast('Pick a file for Image ' + (i + 1) + ' first.', 'warning');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+
+      const canvas = addCroppers[i].getCroppedCanvas({ width: 600, height: 800 });
+      const blob   = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+
+      addStagedBlobs[i] = blob;
+
+      // Show a small cropped preview to confirm
+      const url = URL.createObjectURL(blob);
+      document.getElementById('addPreview' + i).innerHTML =
+        '<img src="' + url + '" style="width:120px;height:160px;object-fit:cover;border-radius:4px;">';
+
+      statusEl.innerHTML = '<span class="text-success"><i class="fas fa-check me-1"></i>Staged — will upload on Add Product.</span>';
+
+      addCroppers[i].destroy();
+      delete addCroppers[i];
+
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-save me-1"></i>Save Image';
+    });
+  });
+
+  // Main form submit — attaches staged blobs then POSTs
+  // ── Live validation helpers (Add form) ───────────────────────────────────
+  function validateAddField(field) {
+    const input = document.getElementById('add_' + field);
+    const errEl = document.getElementById('err_' + field);
+    if (!input || !errEl) return true;
+
+    let msg = '';
+    const val = input.value.trim();
+
+    if (field === 'productName') {
+      if (!val) msg = 'Product name is required';
+    } else if (field === 'categoryId') {
+      if (!val) msg = 'Category must be selected';
+    } else if (field === 'price') {
+      if (!val || isNaN(val) || Number(val) <= 0) msg = 'Price must be a valid positive number';
+    }
+
+    if (msg) {
+      input.classList.add('is-invalid');
+      input.classList.remove('is-valid');
+      errEl.textContent = msg;
+      return false;
+    } else {
+      input.classList.remove('is-invalid');
+      input.classList.add('is-valid');
+      errEl.textContent = '';
+      return true;
+    }
+  }
+
+  // Attach live listeners — blur fires when leaving a field, input fires while typing
+  ['productName', 'price'].forEach(field => {
+    const input = document.getElementById('add_' + field);
+    if (!input) return;
+    input.addEventListener('input', () => validateAddField(field));
+    input.addEventListener('blur',  () => validateAddField(field));
+  });
+  // Select uses change instead of input
+  const addCatSelect = document.getElementById('add_categoryId');
+  if (addCatSelect) addCatSelect.addEventListener('change', () => validateAddField('categoryId'));
+  // ─────────────────────────────────────────────────────────────────────────
+
+  document.getElementById('addProductForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    // Run all validations on submit — stops if any fail
+    const allValid = ['productName', 'categoryId', 'price'].every(field => validateAddField(field));
+    if (!allValid) return;
+
+    ['productName', 'categoryId', 'price'].forEach(field => {
+      const input = document.getElementById('add_' + field);
+      const errEl = document.getElementById('err_' + field);
+      if (input) input.classList.remove('is-invalid');
+      if (errEl) errEl.textContent = '';
+    });
+
+    const formData = new FormData();
+
+    // Append staged cropped blobs
+    for (let i = 0; i < 3; i++) {
+      if (addStagedBlobs[i]) {
+        formData.append('image_' + i, addStagedBlobs[i], 'image_' + i + '.jpg');
+      }
+    }
+
+    // Append all other form fields (skipping file inputs)
+    const raw = new FormData(this);
+    for (const [key, val] of raw.entries()) {
+      if (!key.startsWith('image_')) formData.append(key, val);
+    }
+
+    try {
+      const res  = await fetch('/admin/products/add', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (!data.ok && data.fieldErrors) {
+        Object.entries(data.fieldErrors).forEach(([field, msg]) => {
+          const input = document.getElementById('add_' + field);
+          const errEl = document.getElementById('err_' + field);
+          if (input) input.classList.add('is-invalid');
+          if (errEl) errEl.textContent = msg;
         });
+        return;
+      }
 
-        const formData = new FormData();
+      window.location.href = '/admin/products?success=Product+added+successfully';
 
-        for (let i = 0; i < 3; i++) {
-            const input = document.getElementById('addImage' + i);
-            if (addCroppers[i] && input.files[0]) {
-                const canvas = addCroppers[i].getCroppedCanvas({ width: 600, height: 800 });
-                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
-                formData.append('image_' + i, blob, 'image_' + i + '.jpg');
-            } else if (input.files[0]) {
-                formData.append('image_' + i, input.files[0]);
-            }
-        }
-
-        const raw = new FormData(this);
-        for (const [key, val] of raw.entries()) {
-            if (!key.startsWith('image_')) formData.append(key, val);
-        }
-
-        try {
-            const res  = await fetch('/admin/products/add', { method: 'POST', body: formData });
-            const data = await res.json();
-
-            if (!data.ok && data.fieldErrors) {
-                Object.entries(data.fieldErrors).forEach(([field, msg]) => {
-                    const input = document.getElementById('add_' + field);
-                    const errEl = document.getElementById('err_' + field);
-                    if (input) input.classList.add('is-invalid');
-                    if (errEl) errEl.textContent = msg;
-                });
-                return;
-            }
-
-            window.location.href = '/admin/products?success=Product+added+successfully';
-
-        } catch (err) {
-            console.error('Add product error:', err);
-        }
-    });
+    } catch (err) {
+      console.error('Add product error:', err);
+    }
+  });
 
     document.getElementById('statusModal').addEventListener('show.bs.modal', function (e) {
         const btn = e.relatedTarget;
@@ -443,6 +575,4 @@ for (let i = 0; i < 3; i++) {
         }
     });
 </script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css"/>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-</body>
+  </body>

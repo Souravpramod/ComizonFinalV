@@ -30,12 +30,12 @@
     <form action="/verify-otp" method="POST" id="otpForm">
      
       <div class="otp-inputs">
-        <input type="text" name="otp[]" class="otp-input" maxlength="1" required autofocus inputmode="numeric">
-        <input type="text" name="otp[]" class="otp-input" maxlength="1" required inputmode="numeric">
-        <input type="text" name="otp[]" class="otp-input" maxlength="1" required inputmode="numeric">
-        <input type="text" name="otp[]" class="otp-input" maxlength="1" required inputmode="numeric">
-        <input type="text" name="otp[]" class="otp-input" maxlength="1" required inputmode="numeric">
-        <input type="text" name="otp[]" class="otp-input" maxlength="1" required inputmode="numeric">
+        <input type="text" name="otp[]" class="otp-input" maxlength="1"  autofocus inputmode="numeric">
+        <input type="text" name="otp[]" class="otp-input" maxlength="1"  inputmode="numeric">
+        <input type="text" name="otp[]" class="otp-input" maxlength="1"  inputmode="numeric">
+        <input type="text" name="otp[]" class="otp-input" maxlength="1"  inputmode="numeric">
+        <input type="text" name="otp[]" class="otp-input" maxlength="1"  inputmode="numeric">
+        <input type="text" name="otp[]" class="otp-input" maxlength="1"  inputmode="numeric">
       </div>
       <button type="submit" class="btn btn-danger w-100 py-3 text-uppercase fw-bold rounded-0">
         <i class="fas fa-check-circle me-2"></i>Verify Code
@@ -60,7 +60,21 @@
 
   <script>
     const inputs = document.querySelectorAll('.otp-input');
+
+    document.getElementById('otpForm').addEventListener('submit', function (e) {
+        const filled = [...inputs].every(inp => inp.value.trim() !== '');
+        if (!filled) {
+            e.preventDefault();
+            [...inputs].forEach(inp => {
+                inp.style.borderColor = inp.value.trim() === '' ? '#E63946' : '#444';
+            });
+        }
+    });
+
     inputs.forEach((input, i) => {
+        input.addEventListener('input', () => {
+            input.style.borderColor = '#444'; // reset on typing
+        });
       input.addEventListener('input', e => {
         e.target.value = e.target.value.replace(/\D/g,'');
         if (e.target.value && i < inputs.length - 1) inputs[i+1].focus();

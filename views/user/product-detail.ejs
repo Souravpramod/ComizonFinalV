@@ -54,6 +54,19 @@
 <body class="bg-black text-light">
 <%- include('../partials/header') %>
 
+<% if (locals.isBlocked) { %>
+<div style="margin-top:80px;" class="container py-5">
+  <div class="bg-dark border border-secondary text-center py-5 px-4" style="border-top:4px solid #E63946 !important;">
+    <i class="fas fa-ban fa-3x text-danger mb-3"></i>
+    <h4 class="fw-bold text-uppercase text-white mb-2">Product Unavailable</h4>
+    <p class="text-muted mb-4">This product has been removed and is no longer available for purchase.</p>
+    <a href="<%= listingUrl %>" class="btn btn-danger rounded-0 fw-bold px-4">
+      <i class="fas fa-arrow-left me-2"></i>Back to <%= listingLabel %>
+    </a>
+  </div>
+</div>
+<% } else { %>
+
 <div style="margin-top:76px;">
 
 <!-- ── BREADCRUMB ─────────────────────────────────────────── -->
@@ -100,9 +113,28 @@
       Only <%= p.stockQuantity %> left in stock — order soon!
     </div>
   <% } %>
+  <!-- ── FLASH MESSAGES ────────────────────────────────────── -->
+  <% if (locals.error) { %>
+    <div class="container mt-3">
+      <div class="alert alert-danger alert-dismissible rounded-0 fade show border-0 border-start border-4 border-danger">
+        <i class="fas fa-exclamation-circle me-2"></i><%= locals.error %>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+      </div>
+    </div>
+  <% } %>
+  <% if (locals.success) { %>
+    <div class="container mt-3">
+      <div class="alert alert-success alert-dismissible rounded-0 fade show border-0 border-start border-4 border-success">
+        <i class="fas fa-check-circle me-2"></i><%= locals.success %>
+        <a href="/cart" class="alert-link ms-2">View Cart →</a>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+      </div>
+    </div>
+  <% } %>
 
   <!-- ── MAIN PRODUCT SECTION ───────────────────────────────── -->
   <section class="container py-5">
+
     <div class="row g-5">
 
       <!-- LEFT: Multi Image (3 vertical + zoom) -->
@@ -228,18 +260,45 @@
         </div>
 
         <!-- Price block -->
-        <div class="mb-4">
-          <div class="d-flex align-items-center gap-3">
-            <span class="fw-bold text-white" style="font-size:2.2rem;">
-              $<%= Number(p.price).toFixed(2) %>
+        <%
+          const _eff   = locals.effectivePrice ?? p.price;
+          const _orig  = locals.originalPrice  ?? null;
+          const _label = locals.offerLabel     ?? null;
+          const _color = locals.badgeColorDetail ?? '#E63946';
+          const _dtype = locals.offerDiscountType  ?? null;
+          const _dval  = locals.offerDiscountValue ?? 0;
+          const _discBadge = _dtype === 'flat'
+              ? `₹${_dval} OFF`
+              : (_dtype === 'percent' ? `${_dval}% OFF` : null);
+        %>
+        <div class="mb-4" data-product-id="<%= p._id %>">
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <span class="fw-bold" style="font-size:2.2rem; color:#fff;"
+                  data-price
+                  data-effective-price="<%= _eff %>">
+              $<%= Number(_eff).toFixed(2) %>
             </span>
-            <% if (originalPrice) { %>
-              <span class="text-white text-decoration-line-through fs-5">$<%= originalPrice.toFixed(2) %></span>
-              <span class="badge bg-danger rounded-0 fw-bold" style="font-size:0.8rem;">SAVE <%= discount %>%</span>
-            <% } %>
+            <span class="text-white-50 text-decoration-line-through fs-5"
+                  data-original-price
+                  style="<%= (_orig && _orig !== _eff) ? '' : 'display:none;' %>">
+              $<%= Number(_orig || p.price).toFixed(2) %>
+            </span>
+            <span class="fw-bold rounded-0 px-2 py-1"
+                  data-offer-badge
+                  style="font-size:0.8rem; background:<%= _color %>; color:#fff; letter-spacing:0.5px; <%= _discBadge ? '' : 'display:none;' %>">
+              <% if (_discBadge) { %><%= _discBadge %><% } %>
+            </span>
           </div>
+          <% if (_label) { %>
+            <div class="mt-2">
+              <span class="small fw-semibold px-2 py-1 rounded-0"
+                    style="background:<%= _color %>22; color:<%= _color %>; border:1px solid <%= _color %>55; font-size:0.78rem;">
+                <i class="fas fa-tag me-1"></i><%= _label %>
+              </span>
+            </div>
+          <% } %>
           <% if (p.isPremium) { %>
-            <small class="text-warning"><i class="fas fa-crown me-1"></i>Premium exclusive pricing</small>
+            <small class="text-warning mt-1 d-block"><i class="fas fa-crown me-1"></i>Premium exclusive pricing</small>
           <% } %>
         </div>
 
@@ -261,11 +320,15 @@
               <i class="fas fa-ban me-2"></i>OUT OF STOCK
             </button>
           <% } %>
+          <% const inWishlist = (locals.wishlistIds || []).includes(p._id.toString()); %>
           <form action="/wishlist/add/<%= p._id %>" method="POST" onclick="event.stopPropagation()">
             <button type="submit"
-                    class="btn btn-outline-light btn-lg rounded-0"
-                    title="Add to Wishlist">
-              <i class="far fa-heart text-danger"></i>
+                    class="btn btn-lg rounded-0 fw-bold"
+                    style="<%= inWishlist
+                      ? 'background:#E63946; border:2px solid #E63946; color:#fff;'
+                      : 'background:transparent; border:2px solid rgba(255,255,255,0.4); color:#fff;' %>"
+                    title="<%= inWishlist ? 'Remove from Wishlist' : 'Add to Wishlist' %>">
+              <i class="<%= inWishlist ? 'fas' : 'far' %> fa-heart"></i>
             </button>
           </form>
         </div>
@@ -432,9 +495,9 @@
         </h3>
         <div class="row g-3">
           <% recs.forEach(r => { %>
-            <div class="col-6 col-md-3">
+            <div class="col-6 col-md-3" data-product-id="<%= r._id %>">
   <div class="card product-card h-100 bg-transparent border border-secondary rounded-0"
-       onclick="location.href='/product/<%= r._id %>'" style="cursor:pointer;">
+       onclick="location.href='/product/<%= r._id %>'" style="cursor:pointer;" data-product-name="<%= r.name %>">
 
     <div class="card-img-wrapper position-relative overflow-hidden">
 
@@ -444,11 +507,16 @@
            class="card-img-top" alt="<%= r.name %>">
 
       <!-- Wishlist -->
+      <!-- Wishlist -->
+      <% const recInWishlist = (locals.wishlistIds || []).includes(r._id.toString()); %>
       <form action="/wishlist/add/<%= r._id %>" method="POST" onclick="event.stopPropagation()">
         <button type="submit"
-                class="btn btn-light btn-sm position-absolute top-0 end-0 m-2 rounded-circle"
-                title="Add to Wishlist">
-          <i class="far fa-heart text-danger"></i>
+                class="btn btn-sm position-absolute top-0 end-0 m-2 rounded-circle"
+                style="<%= recInWishlist
+                  ? 'background:#E63946; border:2px solid #E63946; color:#fff;'
+                  : 'background:#fff; border:2px solid #ddd; color:#E63946;' %>"
+                title="<%= recInWishlist ? 'Remove from Wishlist' : 'Add to Wishlist' %>">
+          <i class="<%= recInWishlist ? 'fas' : 'far' %> fa-heart"></i>
         </button>
       </form>
 
@@ -488,10 +556,25 @@
 
       <!-- Price + Cart -->
       <div class="d-flex justify-content-between align-items-center mt-3">
-        <h4 class="text-white mb-0">$<%= Number(r.price).toFixed(2) %></h4>
-
+        <div>
+          <div class="text-white-50 text-decoration-line-through small"
+               data-original-price
+               style="<%= (r.effectivePrice && r.effectivePrice < r.price) ? '' : 'display:none;' %>">
+            $<%= Number(r.price).toFixed(2) %>
+          </div>
+          <h4 class="text-white mb-0"
+              data-price
+              data-effective-price="<%= r.effectivePrice || r.price %>">
+            $<%= Number(r.effectivePrice || r.price).toFixed(2) %>
+          </h4>
+          <span class="fw-bold small"
+                data-offer-badge
+                style="color:<%= r.badgeColorListing || '#E63946' %>; font-size:.72rem; <%= (r.effectivePrice && r.effectivePrice < r.price) ? '' : 'display:none;' %>">
+            <i class="fas fa-tag me-1"></i><%= r.offerBadge || '' %>
+          </span>
+        </div>
         <form action="/cart/add/<%= r._id %>" method="POST" onclick="event.stopPropagation()">
-          <button type="submit" class="btn btn-outline-danger btn-sm rounded-0">
+          <button type="submit" class="btn btn-outline-danger btn-sm rounded-0" data-add-cart-btn>
             <i class="fas fa-cart-plus"></i> Add
           </button>
         </form>
@@ -508,6 +591,7 @@
 
 </div><!-- /margin-top -->
 
+<% } %>
 <%- include('../partials/footer') %>
 
 <script>
@@ -565,6 +649,6 @@ function changeImage(src) {
   if (img) img.src = src;
 }
 </script>
-
+<%- include('../partials/offer-poller') %>
 </body>
 </html>

@@ -81,11 +81,8 @@
                   <input type="number" class="form-control" name="price" id="edit_price" value="<%= product.price %>" step="0.01">
                   <div class="invalid-feedback" id="err_price"></div>
                 </div>
-                <div class="col-md-6 mb-3">
-                  <label class="form-label">Stock Quantity</label>
-                  <input type="number" class="form-control" name="stockQuantity" id="edit_stockQuantity" value="<%= product.stockQuantity %>">
-                  <div class="invalid-feedback" id="err_stockQuantity"></div>
-                </div>
+                <!-- Stock managed by Stock Manager — not editable here -->
+                <input type="hidden" name="stockQuantity" value="<%= product.stockQuantity %>">
               </div>
               <div class="mb-3">
                 <label class="form-label">Description</label>
@@ -96,55 +93,62 @@
   <label class="form-label">Images</label>
 
   <% for(let i = 0; i < 3; i++){ %>
-  <div class="mb-4">
+  <div class="mb-4 p-2 border border-secondary rounded-0" id="imageSlot<%= i %>">
 
-    <!-- SEPARATE name per slot: image_0 / image_1 / image_2 -->
-    <input type="file"
-           name="image_<%= i %>"
-           id="editImage<%= i %>"
-           class="form-control mb-1"
-           data-index="<%= i %>">
-
-    <!-- Hidden flag: set to "1" when user clicks Delete -->
-    <input type="hidden"
-           name="deleteImage_<%= i %>"
-           id="deleteImage<%= i %>"
-           value="0">
-
-    <!-- FILENAME -->
-    <div class="small text-muted mb-2" id="filename<%= i %>">
-      <% if(product.images && product.images[i]){ %>
-        <%= product.images[i].split('/').pop() %>
-      <% } else { %>
-        No image
-      <% } %>
-    </div>
-
-    <!-- DELETE BUTTON -->
-    <button type="button"
-            class="btn btn-sm btn-danger mb-2 delete-image-btn"
-            data-index="<%= i %>">
-      Delete
-    </button>
+    <div class="small text-muted mb-1 fw-semibold">Image <%= i + 1 %></div>
 
     <!-- IMAGE PREVIEW -->
-    <div id="preview<%= i %>">
+    <div id="preview<%= i %>" class="mb-2">
       <% if(product.images && product.images[i]){ %>
         <img src="<%= product.images[i] %>"
-             style="width:120px;height:160px;object-fit:cover;border-radius:6px">
+             style="width:120px;height:160px;object-fit:cover;border-radius:4px;">
       <% } else { %>
         <div style="width:120px;height:160px;background:#222;
-                    display:flex;align-items:center;justify-content:center">
+                    display:flex;align-items:center;justify-content:center;color:#666;font-size:12px;">
           Empty
         </div>
       <% } %>
     </div>
 
+    <!-- File picker -->
+    <input type="file"
+           id="editImage<%= i %>"
+           class="form-control form-control-sm mb-2"
+           data-index="<%= i %>"
+           accept=".jpg,.jpeg,.png,.heif,.heic,.avif">
+
+    <!-- Hidden flag: set to "1" when user clicks Delete -->
+    <input type="hidden" id="deleteImage<%= i %>" value="0">
+
+    <!-- Status line -->
+    <div class="small mb-2" id="slotStatus<%= i %>">
+      <% if(product.images && product.images[i]){ %>
+        <span class="text-muted"><%= product.images[i].split('/').pop().substring(0, 30) %></span>
+      <% } else { %>
+        <span class="text-muted">No image</span>
+      <% } %>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="d-flex gap-2">
+      <button type="button"
+              class="btn btn-sm btn-outline-danger rounded-0 delete-image-btn"
+              data-index="<%= i %>">
+        <i class="fas fa-trash me-1"></i>Delete
+      </button>
+      <button type="button"
+              class="btn btn-sm btn-warning rounded-0 save-image-btn"
+              data-index="<%= i %>"
+              data-product-id="<%= product._id %>">
+        <i class="fas fa-save me-1"></i>Save Image
+      </button>
+    </div>
+
   </div>
   <% } %>
 
-  <small class="text-muted">
-    Upload only the image you want to replace. Others will remain unchanged.
+  <small class="text-muted d-block mt-2">
+    Each image can be saved independently. Use "Save Image" after cropping or deleting.
   </small>
 </div>
             </div>
@@ -168,40 +172,53 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
 <script>
+
+   function showToast(msg, type='danger') {
+    const id = 'toast_' + Date.now();
+    const bg = type === 'success' ? 'bg-success' : type === 'warning' ? 'bg-warning text-dark' : 'bg-danger';
+    const el = document.createElement('div');
+    el.id = id;
+    el.className = `toast align-items-center text-white border-0 ${bg} position-fixed rounded-0`;
+    el.style.cssText = 'top:80px;right:20px;z-index:9999;min-width:280px;';
+    el.setAttribute('role','alert');
+    el.innerHTML = `<div class="d-flex"><div class="toast-body fw-semibold">${msg}</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+    document.body.appendChild(el);
+    const t = new bootstrap.Toast(el, { delay: 4000 });
+    t.show();
+    el.addEventListener('hidden.bs.toast', () => el.remove());
+  }
+
   const croppers = {};
-
-  // ── Cropper: one per slot ──────────────────────────────────────────────────
   const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/heif', 'image/heic', 'image/avif'];
-const ALLOWED_EXTS  = /\.(jpe?g|png|heif|heic|avif)$/i;
+  const ALLOWED_EXTS  = /\.(jpe?g|png|heif|heic|avif)$/i;
 
-function isValidImageFile(file) {
+  function isValidImageFile(file) {
     return ALLOWED_TYPES.includes(file.type) || ALLOWED_EXTS.test(file.name);
-}
+  }
 
-for (let i = 0; i < 3; i++) {
-    const input = document.getElementById('editImage' + i);
-
-    input.addEventListener('change', function (e) {
+  // ── File picker → init cropper ────────────────────────────────────────────
+  for (let i = 0; i < 3; i++) {
+    document.getElementById('editImage' + i).addEventListener('change', function (e) {
       const file = e.target.files[0];
       if (!file) return;
 
       if (!isValidImageFile(file)) {
-          alert('Invalid file type for Image ' + (i + 1) + '.\nAllowed formats: JPEG, JPG, PNG, HEIF, HEIC, AVIF');
-          this.value = '';
-          return;
+        showToast('Invalid file type for Image ' + (i + 1) + '. Allowed: JPEG, JPG, PNG, HEIF, HEIC, AVIF', 'warning');
+        this.value = '';
+        return;
       }
 
-      // Clear the delete flag if user picks a new file
+      // Clear any pending delete flag when a new file is chosen
       document.getElementById('deleteImage' + i).value = '0';
+      document.getElementById('slotStatus' + i).innerHTML = '<span class="text-info">Crop the image, then click Save Image.</span>';
 
       const reader = new FileReader();
       reader.onload = function (ev) {
         const preview = document.getElementById('preview' + i);
-        preview.innerHTML = '<img id="cropImage' + i + '" style="max-width:120px;">';
-
+        preview.innerHTML = '<img id="cropImage' + i + '" style="max-width:200px;">';
         const img = document.getElementById('cropImage' + i);
         img.src = ev.target.result;
-
         if (croppers[i]) croppers[i].destroy();
         croppers[i] = new Cropper(img, { aspectRatio: 3 / 4, viewMode: 1 });
       };
@@ -209,36 +226,155 @@ for (let i = 0; i < 3; i++) {
     });
   }
 
-  // ── Delete buttons ─────────────────────────────────────────────────────────
+  // ── Delete button — marks slot for deletion, doesn't save yet ────────────
   document.querySelectorAll('.delete-image-btn').forEach(function (btn) {
     btn.addEventListener('click', function () {
       const i = parseInt(this.getAttribute('data-index'));
 
-      // 1. Set the hidden flag so the backend knows to remove this slot
       document.getElementById('deleteImage' + i).value = '1';
 
-      // 2. Clear the file input so no upload is sent for this slot
       const fileInput = document.getElementById('editImage' + i);
       fileInput.value = '';
 
-      // 3. Destroy any active cropper for this slot
       if (croppers[i]) { croppers[i].destroy(); delete croppers[i]; }
 
-      // 4. Show "Empty" placeholder
       document.getElementById('preview' + i).innerHTML =
         '<div style="width:120px;height:160px;background:#222;' +
-        'display:flex;align-items:center;justify-content:center">Empty</div>';
+        'display:flex;align-items:center;justify-content:center;color:#666;font-size:12px;">Empty</div>';
 
-      // 5. Clear filename label
-      document.getElementById('filename' + i).textContent = 'No image';
+      document.getElementById('slotStatus' + i).innerHTML =
+        '<span class="text-danger">Marked for deletion — click Save Image to confirm.</span>';
     });
   });
 
-  // ── Form submit ────────────────────────────────────────────────────────────
+  // ── Individual Save Image button ──────────────────────────────────────────
+  document.querySelectorAll('.save-image-btn').forEach(function (btn) {
+    btn.addEventListener('click', async function () {
+      const i         = parseInt(this.getAttribute('data-index'));
+      const productId = this.getAttribute('data-product-id');
+      const deleteFlag = document.getElementById('deleteImage' + i).value;
+      const statusEl  = document.getElementById('slotStatus' + i);
+
+      const fd = new FormData();
+
+      // Always send the other required fields so updateProduct validates cleanly
+      // We read them from the main form
+      const form = document.getElementById('editProductForm');
+      fd.append('productName',   form.querySelector('[name=productName]').value);
+      fd.append('categoryId',    form.querySelector('[name=categoryId]').value);
+      fd.append('price',         form.querySelector('[name=price]').value);
+      fd.append('stockQuantity', form.querySelector('[name=stockQuantity]').value);
+      fd.append('description',   form.querySelector('[name=description]')?.value || '');
+      fd.append('isPremium',     form.querySelector('[name=isPremium]')?.value || 'false');
+
+      // Only send this slot's image data
+      fd.append('deleteImage_' + i, deleteFlag);
+
+      if (deleteFlag !== '1' && croppers[i]) {
+        // Get cropped canvas and convert to blob
+        const canvas = croppers[i].getCroppedCanvas({ width: 600, height: 800 });
+        const blob   = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+        fd.append('image_' + i, blob, 'image_' + i + '.jpg');
+      } else if (deleteFlag !== '1') {
+        // No cropper active — send the raw file if user picked one
+        const fileInput = document.getElementById('editImage' + i);
+        if (fileInput.files[0]) {
+          fd.append('image_' + i, fileInput.files[0]);
+        } else {
+          showToast('No image selected for slot ' + (i + 1) + '. Pick a file first.', 'warning');
+          return;
+        }
+      }
+
+      // Disable button during upload
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+      statusEl.innerHTML = '<span class="text-info">Uploading...</span>';
+
+      try {
+        const res  = await fetch('/admin/products/edit/' + productId, {
+          method: 'POST',
+          body:   fd,
+        });
+        const data = await res.json();
+
+        if (data.ok) {
+          showToast('Image ' + (i + 1) + ' saved successfully!', 'success');
+          statusEl.innerHTML = '<span class="text-success"><i class="fas fa-check me-1"></i>Saved</span>';
+
+          // Reset state for this slot
+          document.getElementById('deleteImage' + i).value = '0';
+          if (croppers[i]) { croppers[i].destroy(); delete croppers[i]; }
+          document.getElementById('editImage' + i).value = '';
+
+          // Refresh the preview from server (reload just the img src)
+          // We do a quick fetch of the product to get the updated image URL
+          setTimeout(() => location.reload(), 800);
+        } else {
+          showToast('Failed to save image ' + (i + 1) + ': ' + (data.message || 'Unknown error'), 'danger');
+          statusEl.innerHTML = '<span class="text-danger">Save failed</span>';
+        }
+      } catch (err) {
+        showToast('Network error saving image ' + (i + 1), 'danger');
+        statusEl.innerHTML = '<span class="text-danger">Network error</span>';
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save me-1"></i>Save Image';
+      }
+    });
+  });
+
+  // ── Main form submit (product fields only — no image data) ────────────────
+  // ── Live validation helpers (Edit form) ──────────────────────────────────
+  function validateEditField(field) {
+    const input = document.getElementById('edit_' + field);
+    const errEl = document.getElementById('err_' + field);
+    if (!input || !errEl) return true;
+
+    let msg = '';
+    const val = input.value.trim();
+
+    if (field === 'productName') {
+      if (!val) msg = 'Product name is required';
+    } else if (field === 'categoryId') {
+      if (!val) msg = 'Category must be selected';
+    } else if (field === 'price') {
+      if (!val || isNaN(val) || Number(val) <= 0) msg = 'Price must be a valid positive number';
+    }
+
+    if (msg) {
+      input.classList.add('is-invalid');
+      input.classList.remove('is-valid');
+      errEl.textContent = msg;
+      return false;
+    } else {
+      input.classList.remove('is-invalid');
+      input.classList.add('is-valid');
+      errEl.textContent = '';
+      return true;
+    }
+  }
+
+  // Attach live listeners
+  ['productName', 'price'].forEach(function (field) {
+    const input = document.getElementById('edit_' + field);
+    if (!input) return;
+    input.addEventListener('input', function () { validateEditField(field); });
+    input.addEventListener('blur',  function () { validateEditField(field); });
+  });
+  const editCatSelect = document.getElementById('edit_categoryId');
+  if (editCatSelect) editCatSelect.addEventListener('change', function () { validateEditField('categoryId'); });
+  // ─────────────────────────────────────────────────────────────────────────
+
   document.getElementById('editProductForm').addEventListener('submit', async function (e) {
     e.preventDefault();
 
-    // Clear previous inline errors
+    // Run all validations on submit — stops if any fail
+    const allValid = ['productName', 'categoryId', 'price'].every(function (field) {
+      return validateEditField(field);
+    });
+    if (!allValid) return;
+
     ['productName', 'categoryId', 'price', 'stockQuantity'].forEach(function (field) {
       const input = document.getElementById('edit_' + field);
       const errEl = document.getElementById('err_' + field);

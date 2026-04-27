@@ -89,7 +89,7 @@ export const addProduct = async (req, res) => {
         if (!productName || productName.trim() === '') fieldErrors.productName = 'Product name is required';
         if (!categoryId) fieldErrors.categoryId = 'Category must be selected';
         if (!price || isNaN(price) || Number(price) <= 0) fieldErrors.price = 'Price must be a valid positive number';
-        if (stockQuantity === undefined || isNaN(stockQuantity) || Number(stockQuantity) < 0) fieldErrors.stockQuantity = 'Stock quantity must be 0 or more';
+        
 
         if (Object.keys(fieldErrors).length > 0) {
             return res.status(400).json({ ok: false, fieldErrors });
@@ -116,7 +116,6 @@ export const addProduct = async (req, res) => {
             }
         }
 
-        const qty = parseInt(stockQuantity, 10) || 0;
         const sku = `PRD-${Date.now().toString().slice(-6)}`;
 
         await Product.create({
@@ -126,10 +125,10 @@ export const addProduct = async (req, res) => {
             publisher:     publisher   || '',
             description:   description || '',
             price:         parseFloat(price),
-            stockQuantity: qty,
+            stockQuantity: 0,  
             images,
             isPremium:     isPremium === 'true',
-            outOfstock:    qty === 0,
+            outOfstock:    true,
             sku,
         });
 
@@ -188,9 +187,7 @@ export const updateProduct = async (req, res) => {
             errors.push('Price must be a valid positive number');
         }
 
-        if (stockQuantity === undefined || isNaN(stockQuantity) || Number(stockQuantity) < 0) {
-            errors.push('Stock quantity must be 0 or more');
-        }
+        
 
         if (errors.length > 0) {
            
@@ -198,7 +195,7 @@ export const updateProduct = async (req, res) => {
                 ...((!productName || productName.trim() === '') && { productName: 'Product name is required' }),
                 ...(!categoryId && { categoryId: 'Category must be selected' }),
                 ...((!price || isNaN(price) || Number(price) <= 0) && { price: 'Price must be a valid positive number' }),
-                ...((stockQuantity === undefined || isNaN(stockQuantity) || Number(stockQuantity) < 0) && { stockQuantity: 'Stock quantity must be 0 or more' }),
+                
             }});
         }
 
@@ -229,16 +226,14 @@ for (let i = 0; i < 3; i++) {
 product.images = product.images.filter(Boolean);
 product.markModified('images');
 
-        const qty = parseInt(stockQuantity, 10) || 0;
         product.productName   = productName.trim();
         product.author        = author      || '';
         product.publisher     = publisher   || '';
         product.categoryId    = categoryId;
         product.price         = parseFloat(price);
-        product.stockQuantity = qty;
+        
         product.description   = description || '';
         product.isPremium     = isPremium === 'true';
-        product.outOfstock    = qty === 0;
 
         await product.save();
 

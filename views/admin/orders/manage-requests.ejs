@@ -107,17 +107,40 @@
                                 data-action="approve">
                           <i class="fas fa-check"></i>
                         </button>
-                        <button class="btn btn-danger btn-sm rounded-circle resolve-btn"
+                        <button class="btn btn-danger btn-sm rounded-circle"
                                 style="width:42px;height:42px;font-size:1.1rem;"
                                 title="Reject — revert to delivered"
-                                data-order-id="<%= r.orderId %>"
-                                data-item-id="<%= r.itemId %>"
-                                data-type="return"
-                                data-action="reject">
+                                onclick="showRejectBox('<%= r.itemId %>')">
                           <i class="fas fa-times"></i>
                         </button>
                       </div>
 
+                    </div>
+
+                    <!-- Reject reason box (hidden until reject clicked) -->
+                    <div class="reject-box mt-3 p-3 rounded" id="rejectbox-<%= r.itemId %>"
+                         style="display:none;background:#1a1a1a;border:1px solid #dc3545;">
+                      <label class="small text-danger fw-semibold mb-1">
+                        <i class="fas fa-exclamation-circle me-1"></i>Reason for rejection <span class="text-white-50">(required — shown to customer)</span>
+                      </label>
+                      <textarea class="form-control form-control-sm bg-black text-light border-secondary mb-2"
+                                id="rejectreason-<%= r.itemId %>"
+                                rows="2"
+                                maxlength="300"
+                                placeholder="e.g. Return window has passed, item shows signs of use..."></textarea>
+                      <div class="d-flex gap-2">
+                        <button class="btn btn-danger btn-sm resolve-btn"
+                                data-order-id="<%= r.orderId %>"
+                                data-item-id="<%= r.itemId %>"
+                                data-type="return"
+                                data-action="reject">
+                          <i class="fas fa-times me-1"></i>Confirm Reject
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm"
+                                onclick="hideRejectBox('<%= r.itemId %>')">
+                          Cancel
+                        </button>
+                      </div>
                     </div>
 
                     <!-- Result message area -->
@@ -136,6 +159,14 @@
 </body>
 
 <script>
+function showRejectBox(itemId) {
+  document.getElementById(`rejectbox-${itemId}`).style.display = 'block';
+}
+function hideRejectBox(itemId) {
+  document.getElementById(`rejectbox-${itemId}`).style.display = 'none';
+  document.getElementById(`rejectreason-${itemId}`).value = '';
+}
+
 document.querySelectorAll('.resolve-btn').forEach(btn => {
   btn.addEventListener('click', async function () {
     const orderId = this.dataset.orderId;
@@ -143,11 +174,23 @@ document.querySelectorAll('.resolve-btn').forEach(btn => {
     const type    = this.dataset.type;    // 'cancel' | 'return'
     const action  = this.dataset.action; // 'approve' | 'reject'
 
+    // For reject, grab the reason — validate it's filled
+    let deniedReason = '';
+    if (action === 'reject') {
+      deniedReason = (document.getElementById(`rejectreason-${itemId}`)?.value || '').trim();
+      if (!deniedReason) {
+        document.getElementById(`rejectreason-${itemId}`).focus();
+        document.getElementById(`rejectreason-${itemId}`).style.borderColor = '#dc3545';
+        showToast('Please enter a reason before confirming rejection.', 'danger');
+        return;
+      }
+    }
+
     const endpoint = type === 'cancel'
       ? `/admin/orders/${orderId}/items/${itemId}/resolve-cancel`
       : `/admin/orders/${orderId}/items/${itemId}/resolve-return`;
 
-    // Disable both buttons on this card while waiting
+    // Disable all resolve-btns on this card while waiting
     const card = document.getElementById(`card-${itemId}`);
     card.querySelectorAll('.resolve-btn').forEach(b => b.disabled = true);
 
@@ -155,7 +198,7 @@ document.querySelectorAll('.resolve-btn').forEach(btn => {
       const res  = await fetch(endpoint, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ action }),
+        body:    JSON.stringify({ action, deniedReason }),
       });
       const data = await res.json();
 

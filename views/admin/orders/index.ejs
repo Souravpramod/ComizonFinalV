@@ -104,7 +104,7 @@
           <div class="col-lg-2 col-md-4 mb-2">
             <select class="form-select bg-dark text-light border-secondary" name="status">
               <option value="">All Status</option>
-              <% ['pending','processing','shipped','out_for_delivery','delivered','cancelled','return_requested'].forEach(s => { %>
+              <% ['pending','processing','shipped','out_for_delivery','delivered','cancelled','return_requested','failed'].forEach(s => { %>
                 <option value="<%= s %>" <%= (locals.status === s) ? 'selected' : '' %>>
                   <%= s.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) %>
                 </option>
@@ -173,12 +173,13 @@
                   </td>
                   <td class="text-warning fw-bold">$<%= order.total.toFixed(2) %></td>
                   <td>
-                    <% const LOCKED = ['cancelled','delivered','return_requested'];
+                    <% const LOCKED = ['cancelled','delivered','return_requested','returned','out_for_delivery','failed'];
                        const isLocked = LOCKED.includes(order.status);
                        const statusColors = {
                          pending:'warning', processing:'info', shipped:'primary',
                          out_for_delivery:'info', delivered:'success',
-                         cancelled:'danger', return_requested:'warning'
+                         cancelled:'danger', return_requested:'warning',
+                         returned:'secondary', failed:'danger'
                        }; %>
                     <% if (isLocked) { %>
                       <span class="badge bg-<%= statusColors[order.status]||'secondary' %> px-2 py-1" style="font-size:.75rem;">
@@ -200,7 +201,7 @@
                     <% } %>
                   </td>
                   <td>
-                    <% const payColors = {pending:'warning', paid:'success', refunded:'info'}; %>
+                    <% const payColors = {pending:'warning', paid:'success', refunded:'info', failed:'danger'}; %>
                     <span class="badge bg-<%= payColors[order.paymentStatus] || 'secondary' %>">
                       <%= order.paymentStatus.charAt(0).toUpperCase() + order.paymentStatus.slice(1) %>
                     </span>
@@ -259,6 +260,22 @@
 </body>
 
 <script>
+
+  function showToast(msg, type='danger') {
+    const id = 'toast_' + Date.now();
+    const bg = type === 'success' ? 'bg-success' : type === 'warning' ? 'bg-warning text-dark' : 'bg-danger';
+    const el = document.createElement('div');
+    el.id = id;
+    el.className = `toast align-items-center text-white border-0 ${bg} position-fixed rounded-0`;
+    el.style.cssText = 'top:80px;right:20px;z-index:9999;min-width:280px;';
+    el.setAttribute('role','alert');
+    el.innerHTML = `<div class="d-flex"><div class="toast-body fw-semibold">${msg}</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+    document.body.appendChild(el);
+    const t = new bootstrap.Toast(el, { delay: 4000 });
+    t.show();
+    el.addEventListener('hidden.bs.toast', () => el.remove());
+}
 // Inline status change via AJAX
 document.querySelectorAll('.status-select').forEach(sel => {
   sel.addEventListener('change', async function () {
@@ -275,7 +292,7 @@ document.querySelectorAll('.status-select').forEach(sel => {
       const data = await res.json();
 
       if (!data.ok) {
-        alert('Failed to update status: ' + (data.message || 'Unknown error'));
+        showToast('Failed to update status: ' + (data.message || 'Unknown error'));
         this.value = orig;
       } else {
         // Flash row green briefly
@@ -285,7 +302,7 @@ document.querySelectorAll('.status-select').forEach(sel => {
         setTimeout(() => { row.style.background = ''; }, 1200);
       }
     } catch (e) {
-      alert('Network error');
+      showToast('Network error. Please try again.');
       this.value = orig;
     }
   });

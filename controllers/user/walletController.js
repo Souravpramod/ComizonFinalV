@@ -267,3 +267,31 @@ export const refundToWallet = async (userId, amount, orderId, description = 'Ord
     const wallet = await Wallet.findOrCreate(userId);
     await wallet.credit(amount, 'order_refund', description, { orderId });
 };
+
+export const recordFailedTopup = async (req, res) => {
+    if (!req.session?.user?.id) return res.status(401).json({ ok: false });
+
+    const { amount, error_description, razorpay_order_id } = req.body;
+    const userId = req.session.user.id;
+
+    try {
+        const failedAmount = +(parseFloat(amount) / 100).toFixed(2);
+        const wallet = await Wallet.findOrCreate(userId);
+
+        
+        wallet.transactions.push({
+            type:         'debit',
+            amount:       failedAmount,
+            reason:       'payment_failed',
+            description:  `Top-up failed: ${error_description || 'Payment was not completed'} (Ref: ${razorpay_order_id || 'N/A'})`,
+            balanceAfter: wallet.balance,  
+            orderId:      null,
+        });
+        await wallet.save();
+
+        return res.json({ ok: true });
+    } catch (err) {
+        console.error('recordFailedTopup error:', err.message);
+        return res.status(500).json({ ok: false });
+    }
+};

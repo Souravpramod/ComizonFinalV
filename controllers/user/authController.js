@@ -9,9 +9,17 @@ import {
     formatZodErrors,
     getPasswordCriteriaErrors,
 } from '../../utils/validators.js';
+import Wallet from '../../models/Wallet.js';
 
-
-
+async function generateUniqueReferralCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; 
+    let code, exists;
+    do {
+        code = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+        exists = await User.findOne({ referralCode: code }).lean();
+    } while (exists);
+    return code;
+}
 export const getLogin = (req, res) =>
     res.render('user/login', { title: 'Login', error: null, formData: {} });
 
@@ -21,7 +29,7 @@ export const getSignup = (req, res) =>
         error: null,
         fieldErrors: {},
         passwordCriteria: getPasswordCriteriaErrors(''),
-        formData: {},
+        formData: {referralCode: req.query.ref || ''},
     });
 
 export const getForgotPassword = (req, res) =>
@@ -131,17 +139,32 @@ export const postSignup = async (req, res) => {
             });
         }
 
+        
+
+       
+        const newReferralCode = await generateUniqueReferralCode();
+
+      
+        const enteredRef = (formData.referralCode || '').trim().toUpperCase();
+        let referrerUser = null;
+        if (enteredRef) {
+            referrerUser = await User.findOne({ referralCode: enteredRef }).lean();
+          
+        }
+
         const newUser = await User.create({
             firstName: data.firstName,
             lastName: data.lastName,
             username: data.username,
             email: data.email.toLowerCase(),
             passwordHash,
-            gender:data.gender,
+            gender: data.gender,
             phone: (data.countryCode || '') + data.phone,
             role: 'user',
             isActive: false,
             addresses,
+            referralCode: newReferralCode,
+            referredBy:   referrerUser ? enteredRef : null,
         });
 
         
@@ -156,6 +179,13 @@ export const postSignup = async (req, res) => {
         await sendOTP(newUser.email, otp, 'signup');
         console.log(`[authController]  OTP Email Sent for signup: ${newUser.email}`);
 
+
+        if (referrerUser) {
+            req.session.pendingReferralReward = {
+                referrerId: referrerUser._id.toString(),
+                newUserEmail: newUser.email,
+            };
+        }
 
         req.session.otp = {
             email: newUser.email,
@@ -279,8 +309,31 @@ export const postVerifyOtp = async (req, res) => {
         delete req.session.otp;
 
         if (type === 'signup') {
-            await User.findOneAndUpdate({ email }, { isActive: true });
-            return res.redirect('/login');
+            const user = await User.findOneAndUpdate({ email }, { isActive: true }, { new: true });
+            req.session.user = {
+                id:        user._id,
+                email:     user.email,
+                role:      'user',
+                isPremium: user.isPremium,
+            };
+
+            
+            const pendingReward = req.session.pendingReferralReward;
+            if (pendingReward && pendingReward.newUserEmail === email) {
+                try {
+                    const referrerWallet = await Wallet.findOrCreate(pendingReward.referrerId);
+                    await referrerWallet.credit(
+                        20,
+                        'referral_reward',
+                        `Referral reward — ${email} joined using your code`
+                    );
+                } catch (walletErr) {
+                    console.error('[Referral] Wallet credit failed:', walletErr.message);
+                }
+                delete req.session.pendingReferralReward;
+            }
+
+            return res.redirect('/');
         }
 
         if (type === 'forgot_password') {
@@ -320,6 +373,8 @@ export const postResendOtp = async (req, res) => {
             freshOtp: true
         });
     };
+
+    
 
     try {
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -458,16 +513,10 @@ export const postfChangePassword = async (req, res) => {
         await User.findByIdAndUpdate(user._id, { passwordHash: hash, lastLogin: new Date() });
 
 
-        delete req.session.reset;
+        
+            delete req.session.reset;
 
-        req.session.user = {
-            id: user._id,
-            email: user.email,
-            role: 'user',
-            isPremium: user.isPremium,
-        };
-
-        res.redirect('/');
+            res.redirect('/login');
 
     } catch (err) {
         if (err.name === 'ZodError') {
@@ -486,3 +535,17 @@ export const getLogout = (req, res) => {
         res.redirect('/');
     });
 };
+
+
+export const getMyStatus = async (req, res) => {
+    if (!req.session?.user?.id) return res.json({ isPremium: false });
+    try {
+        const User = (await import('../../models/Users.js')).default;
+        const user = await User.findById(req.session.user.id).select('isPremium').lean();
+        return res.json({ isPremium: !!user?.isPremium });
+    } catch {
+        return res.json({ isPremium: false });
+    }
+};
+
+

@@ -18,8 +18,14 @@ export const getUsers = async (req, res) => {
                 { email: { $regex: safeSearch, $options: 'i' } },
             ];
         }
-        if (status === 'blocked') query.isActive = false;
-        if (status === 'active') query.isActive = true;
+        if (status === 'blocked') {
+            query.isBlocked = true;
+            query.isActive  = false;
+        }
+        if (status === 'active') {
+            query.isBlocked = { $ne: true };
+            query.isActive  = { $ne: false };
+        }
 
         if (role === 'admin') query.role = 'admin';
         else if (role === 'premium') query.isPremium = true;
@@ -71,10 +77,11 @@ export const postToggleBlock = async (req, res) => {
 
         const user = await User.findById(userId);
         if (user) {
-            user.isActive = !user.isActive;
-            user.isBlocked = !user.isActive;
+            const shouldBlock = user.isActive && !user.isBlocked; 
+            user.isActive  = !shouldBlock;
+            user.isBlocked = shouldBlock;
             await user.save();
-            console.log(`User ${user.email} → isActive: ${user.isActive}`);
+            console.log(`User ${user.email} → isActive: ${user.isActive}, isBlocked: ${user.isBlocked}`);
         }
     } catch (err) {
         console.error('Toggle block error:', err.message);
@@ -280,5 +287,21 @@ export const viewUser = async (req, res) => {
     } catch (err) {
         console.error('getUser error:', err.message);
         res.redirect('/admin/users?error=Failed+to+load+user');
+    }
+};
+
+
+export const checkEmailAvailability = async (req, res) => {
+    const { email, excludeId } = req.query;
+    if (!email || !/\S+@\S+\.\S+/.test(email)) {
+        return res.json({ available: false, error: 'Invalid email format' });
+    }
+    try {
+        const query = { email };
+        if (excludeId) query._id = { $ne: excludeId };
+        const existing = await User.findOne(query);
+        res.json({ available: !existing });
+    } catch (err) {
+        res.json({ available: false, error: 'Server error' });
     }
 };

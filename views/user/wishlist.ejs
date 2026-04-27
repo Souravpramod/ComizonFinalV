@@ -101,10 +101,35 @@
             </div>
 
         <% } else { %>
-            <div class="row g-4">
+
+            <%# — Blocked item banner — %>
+            <% const blockedItems = items.filter(i => !i.isActive); %>
+            <% if (blockedItems.length > 0) { %>
+                <div class="alert alert-danger rounded-0 border-0 border-start border-4 border-danger mb-4" id="blocked-banner">
+                    <i class="fas fa-ban me-2"></i>
+                    <strong>Admin Notice:</strong>
+                    The following item<%= blockedItems.length > 1 ? 's have' : ' has' %> been <strong>blocked</strong> and will be automatically removed:
+                    <ul class="mb-0 mt-1">
+                        <% blockedItems.forEach(b => { %>
+                            <li><strong><%= b.name %></strong></li>
+                        <% }) %>
+                    </ul>
+                </div>
+            <% } %>
+
+            <%# — Add All to Cart button — %>
+            <div class="d-flex justify-content-end mb-4">
+                <form action="/wishlist/move-all-to-cart" method="POST">
+                    <button type="submit" class="btn btn-danger rounded-0 fw-bold px-4">
+                        <i class="fas fa-shopping-cart me-2"></i>Add All to Cart
+                    </button>
+                </form>
+            </div>
+
+            <div class="row g-4" id="wishlist-grid">
                 <% items.forEach(product => { %>
-                    <div class="col-md-4 col-lg-3">
-                        <div class="card product-card h-100 rounded-0 border-0">
+                    <div class="col-md-4 col-lg-3 wishlist-item" data-product-id="<%= product._id %>">
+                        <div class="card product-card h-100 rounded-0 border-0 <%= !product.isActive ? 'opacity-50' : '' %>">
 
                             <!-- Image + Remove Button -->
                             <div class="card-img-wrapper position-relative overflow-hidden">
@@ -124,24 +149,61 @@
                                         <i class="fas fa-times"></i>
                                     </button>
                                 </form>
+
+                                <!-- Blocked badge -->
+                                <% if (!product.isActive) { %>
+                                    <span class="position-absolute bottom-0 start-0 w-100 text-center py-1 fw-bold small"
+                                          style="background:rgba(220,53,69,0.85); color:#fff; letter-spacing:.5px;">
+                                        <i class="fas fa-ban me-1"></i>BLOCKED — Removing…
+                                    </span>
+                                <% } %>
                             </div>
 
                             <!-- Card Body -->
                             <div class="card-body d-flex flex-column" style="background:#1A1A1A;">
                                 <div class="text-muted small mb-1 text-uppercase"><%= product.category %></div>
-                                <h5 class="card-title fw-bold text-truncate text-white mb-1">
-                                    <a href="/product/<%= product._id %>" class="text-decoration-none text-white">
-                                        <%= product.name %>
-                                    </a>
-                                </h5>
-                                <h4 class="text-white mt-1 mb-3">$<%= product.price.toFixed(2) %></h4>
+                                <h5 class="card-title fw-bold text-truncate text-white mb-1" data-product-name>
+                                <a href="/product/<%= product._id %>" class="text-decoration-none text-white">
+                                    <%= product.name %>
+                                </a>
+                            </h5>
+                            <%
+                              const wHasOff = product.effectivePrice && product.effectivePrice < product.price;
+                            %>
+                            <div class="text-white-50 text-decoration-line-through small me-2"
+                                 data-original-price
+                                 style="<%= wHasOff ? '' : 'display:none;' %>">
+                                $<%= Number(product.price).toFixed(2) %>
+                            </div>
+                            <h4 class="text-white mt-1 mb-1"
+                                data-price
+                                data-effective-price="<%= wHasOff ? product.effectivePrice : product.price %>">
+                                $<%= Number(wHasOff ? product.effectivePrice : product.price).toFixed(2) %>
+                            </h4>
+                            <div class="mb-3">
+                                <span class="fw-bold small"
+                                      data-offer-badge
+                                      style="color:<%= product.badgeColor || '#E63946' %>; <%= wHasOff ? '' : 'display:none;' %>">
+                                    <i class="fas fa-tag me-1"></i><% if (wHasOff) { %><%= product.offerBadge %><% } %>
+                                </span>
+                            </div>
 
-                                <!-- Move to Cart -->
-                                <form action="/wishlist/move-to-cart/<%= product._id %>" method="POST" class="mt-auto">
-                                    <button type="submit" class="btn btn-outline-danger w-100 rounded-0 fw-bold">
-                                        <i class="fas fa-shopping-cart me-2"></i>Add to Cart
+                                <!-- Move to Cart (individual) -->
+                                <% if (product.isActive && !product.outOfstock) { %>
+                                    <form action="/wishlist/move-to-cart/<%= product._id %>" method="POST" class="mt-auto">
+                                        <button type="submit" class="btn btn-outline-danger w-100 rounded-0 fw-bold" data-add-cart-btn>
+                                            <i class="fas fa-shopping-cart me-2"></i>Add to Cart
+                                        </button>
+                                    </form>
+                                <% } else if (!product.isActive) { %>
+                                    <button class="btn btn-secondary w-100 rounded-0 fw-bold mt-auto" disabled data-add-cart-btn>
+                                        <i class="fas fa-ban me-2"></i>Blocked
                                     </button>
-                                </form>
+                                <% } else { %>
+                                    <button class="btn btn-secondary w-100 rounded-0 fw-bold mt-auto" disabled data-add-cart-btn>
+                                        <i class="fas fa-times me-2"></i>Out of Stock
+                                    </button>
+                                <% } %>
                             </div>
 
                         </div>
@@ -160,6 +222,70 @@
     </section>
 
     <%- include('../partials/footer') %>
+    <%- include('../partials/offer-poller') %>
+    <script>
+// ── Wishlist blocked-item poller (checks every second) ────────────────────────
+(function () {
+    const INTERVAL = 1000;
+
+    async function pollWishlist() {
+        try {
+            const res  = await fetch('/wishlist/stock-check');
+            if (!res.ok) return;
+            const data = await res.json();
+            if (!data.ok) return;
+
+            let anyRemoved = false;
+
+            for (const item of data.items) {
+                const card = document.querySelector(`.wishlist-item[data-product-id="${item.productId}"]`);
+                if (!card) continue;
+
+                if (item.blocked) {
+                    // Auto-remove from wishlist silently via fetch
+                    await fetch(`/wishlist/remove/${item.productId}`, { method: 'POST' });
+                    card.style.transition = 'opacity 0.5s';
+                    card.style.opacity    = '0';
+                    setTimeout(() => card.remove(), 500);
+                    anyRemoved = true;
+
+                    // Show toast notification
+                    showBlockedToast(item.name);
+                }
+            }
+
+            if (anyRemoved) {
+                // Update count in header
+                const remaining = document.querySelectorAll('.wishlist-item').length;
+                const countEl   = document.querySelector('.page-header p');
+                if (countEl) countEl.textContent = `${remaining} item${remaining !== 1 ? 's' : ''} saved`;
+
+                // If all gone, reload to show empty state
+                if (remaining === 0) setTimeout(() => location.reload(), 600);
+            }
+
+        } catch (e) { /* silent */ }
+    }
+
+    function showBlockedToast(name) {
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;min-width:300px;';
+        wrap.innerHTML = `
+            <div class="alert alert-danger rounded-0 border-0 border-start border-4 border-danger d-flex align-items-center gap-2 shadow">
+                <i class="fas fa-ban fa-lg"></i>
+                <div>
+                    <strong>Item Removed</strong><br>
+                    <small>"${name}" was blocked by admin and removed from your wishlist.</small>
+                </div>
+                <button class="btn-close btn-close-white ms-auto" onclick="this.closest('div[style]').remove()"></button>
+            </div>`;
+        document.body.appendChild(wrap);
+        setTimeout(() => wrap.remove(), 5000);
+    }
+
+    setInterval(pollWishlist, INTERVAL);
+})();
+</script>
 
 </body>
 </html>

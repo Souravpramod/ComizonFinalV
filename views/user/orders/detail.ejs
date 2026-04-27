@@ -190,9 +190,26 @@
           <div>
             <div class="text-white-50 small mb-1">Payment</div>
             <div class="fw-semibold small text-uppercase"><%= order.paymentMethod || 'COD' %></div>
-            <span class="badge bg-<%= order.paymentStatus==='paid'?'success':order.paymentStatus==='refunded'?'info':'warning' %>">
+              <span class="badge bg-<%= order.paymentStatus==='paid'?'success':order.paymentStatus==='refunded'?'info':order.paymentStatus==='failed'?'danger':'warning' %>">
               <%= order.paymentStatus?.charAt(0).toUpperCase()+order.paymentStatus?.slice(1) %>
             </span>
+            <% if (order.paymentMethod === 'online' && (order.paymentStatus === 'pending' || order.paymentStatus === 'failed')) { %>
+              <div class="mt-3 p-3 rounded-0" style="background:rgba(255,193,7,.08); border:1px solid rgba(255,193,7,.3); border-left:4px solid #ffc107;">
+                <p class="mb-2 small fw-bold text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Payment Incomplete</p>
+                <p class="mb-3 text-white-50 small">This order was reserved but payment was not completed. You can retry payment or cancel the order.</p>
+                <div class="d-flex gap-2 flex-wrap">
+                  <a href="/checkout?retryOrderId=<%= order._id %>" class="btn btn-warning btn-sm rounded-0 fw-bold">
+                    <i class="fas fa-redo me-2"></i>Retry Payment
+                  </a>
+                  <form action="/orders/<%= order._id %>/cancel" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-outline-danger btn-sm rounded-0"
+                      onclick="return confirm('Cancel this order?')">
+                      <i class="fas fa-times me-1"></i>Cancel Order
+                    </button>
+                  </form>
+                </div>
+              </div>
+            <% } %>
           </div>
           <div>
             <div class="text-white-50 small mb-1">Total</div>
@@ -244,21 +261,70 @@
                     </div>
                   </div>
 
-                  <!-- Cancel/return reason display -->
+                  <!-- Cancel reason display -->
                   <% if (item.cancelReason) { %>
                     <div class="text-white-50 small mt-2">
                       <i class="fas fa-info-circle me-1 text-danger"></i>
                       Cancel reason: <em><%= item.cancelReason %></em>
                     </div>
                   <% } %>
-                  <% if (item.returnReason) { %>
-                    <div class="text-white-50 small mt-2">
-                      <i class="fas fa-undo me-1 text-warning"></i>
-                      Return reason: <em><%= item.returnReason %></em>
+
+                  <%
+                    // Return status box logic:
+                    // Only show if a return was ever requested for this item
+                    const hadReturnRequest = item.returnReason ||
+                                             iStatus === 'return_requested' ||
+                                             iStatus === 'returned' ||
+                                             item.returnDeniedReason;
+                  %>
+                  <% if (hadReturnRequest) { %>
+                    <div class="mt-3 p-3 rounded-0"
+                         style="background:rgba(255,255,255,.03); border:1px solid #333; border-left:3px solid
+                           <%= iStatus === 'returned'         ? '#28a745'
+                             : iStatus === 'return_requested' ? '#fd9843'
+                             :                                  '#dc3545' %>;">
+
+                      <div class="small fw-bold mb-1"
+                           style="color:
+                             <%= iStatus === 'returned'         ? '#75b798'
+                               : iStatus === 'return_requested' ? '#fd9843'
+                               :                                  '#ea868f' %>;">
+                        <i class="fas fa-<%= iStatus === 'returned' ? 'check-circle' : iStatus === 'return_requested' ? 'clock' : 'times-circle' %> me-1"></i>
+                        Return
+                        <%= iStatus === 'returned'         ? 'Approved'
+                          : iStatus === 'return_requested' ? 'Pending Review'
+                          :                                  'Rejected' %>
+                      </div>
+
+                      <% if (item.returnReason) { %>
+                        <div class="text-white-50 small mb-1">
+                          Your reason: <em><%= item.returnReason %></em>
+                        </div>
+                      <% } %>
+
+                      <% if (iStatus === 'return_requested') { %>
+                        <div class="text-white-50 small">
+                          Your request is under review. We'll update you once it's processed.
+                        </div>
+                      <% } else if (iStatus === 'returned') { %>
+                        <div class="text-white-50 small">
+                          Your return has been accepted.
+                          <% if (order.paymentMethod !== 'cod') { %>
+                            A refund of <span class="text-info fw-bold">$<%= item.lineTotal.toFixed(2) %></span> has been credited to your wallet.
+                          <% } %>
+                        </div>
+                      <% } else if (item.returnDeniedReason) { %>
+                        <div class="small mt-1" style="color:#ea868f;">
+                          <i class="fas fa-comment-slash me-1"></i>Store response:
+                          <em><%= item.returnDeniedReason %></em>
+                        </div>
+                      <% } %>
+
                     </div>
                   <% } %>
 
                   <!-- Action buttons -->
+                  <% const wasRejected = !!(item.returnDeniedReason); %>
                   <div class="mt-3 d-flex gap-2 flex-wrap align-items-center">
                     <% if (canCancel) { %>
                       <button class="btn btn-outline-danger btn-sm rounded-0 fw-bold"
@@ -266,12 +332,17 @@
                         <i class="fas fa-times me-1"></i>Cancel Item
                       </button>
                     <% } %>
-                    <% if (canReturn) { %>
+                    <% if (canReturn && !wasRejected) { %>
                       <button class="btn btn-sm rounded-0 fw-bold text-dark"
                               style="background:#FFD700;border:1px solid #FFD700;"
                               onclick="openReturn('<%= order._id %>','<%= item._id %>')">
                         <i class="fas fa-undo me-1"></i>Return Item
                       </button>
+                    <% } else if (wasRejected) { %>
+                      <span class="btn btn-sm rounded-0 fw-bold disabled"
+                            style="background:rgba(220,53,69,.08);color:#ea868f;border:1px solid rgba(220,53,69,.3);cursor:not-allowed;">
+                        <i class="fas fa-ban me-1"></i>Return Not Eligible
+                      </span>
                     <% } %>
                     <% if (returnExpired) { %>
                       <span class="text-white-50 small">
@@ -293,7 +364,7 @@
                         <i class="fas fa-ban me-1 text-danger"></i>Cancelled
                       </span>
                     <% } %>
-                    <% if (iStatus === 'delivered' && !canReturn && !returnExpired) { %>
+                    <% if (iStatus === 'delivered' && !canReturn && !returnExpired && !wasRejected) { %>
                       <span class="text-success small"><i class="fas fa-check-circle me-1"></i>Delivered</span>
                     <% } %>
                   </div>
@@ -324,17 +395,31 @@
           <div class="col-md-6">
             <div class="info-card h-100">
               <div class="section-label">Price Breakdown</div>
+              <%
+                const isFullyTerminal = order.items.every(i =>
+                  ['cancelled','returned'].includes(i.itemStatus)
+                );
+              %>
               <div class="d-flex justify-content-between small text-white-50 mb-2">
-                <span>Subtotal</span><span>$<%= order.subtotal.toFixed(2) %></span>
+                <span>Subtotal</span>
+                <span><%= isFullyTerminal ? '$0.00' : '$' + order.subtotal.toFixed(2) %></span>
               </div>
               <div class="d-flex justify-content-between small text-white-50 mb-2">
                 <span>Shipping</span>
-                <span><%= order.shippingFee === 0 ? 'FREE' : '$' + order.shippingFee.toFixed(2) %></span>
+                <span><%= isFullyTerminal ? '$0.00' : (order.shippingFee === 0 ? 'FREE' : '$' + order.shippingFee.toFixed(2)) %></span>
               </div>
               <hr class="border-secondary my-2">
               <div class="d-flex justify-content-between fw-bold">
-                <span>Total</span><span class="text-danger">$<%= order.total.toFixed(2) %></span>
+                <span>Total</span>
+                <span class="<%= isFullyTerminal ? 'text-white-50 text-decoration-line-through' : 'text-danger' %>">
+                  $<%= isFullyTerminal ? '0.00' : order.total.toFixed(2) %>
+                </span>
               </div>
+              <% if (isFullyTerminal) { %>
+                <div class="text-success small mt-2">
+                  <i class="fas fa-check-circle me-1"></i>Full refund processed
+                </div>
+              <% } %>
             </div>
           </div>
         </div>

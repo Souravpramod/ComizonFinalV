@@ -256,6 +256,70 @@
 </script>
 <% } %>
 
+<script>
+  // ── Live validation — Add Category form ───────────────────────────────────
+  function validateAddCatField(id, errId, rules) {
+    const input = document.getElementById(id);
+    const errEl = document.getElementById(errId);
+    if (!input || !errEl) return true;
+
+    const val = input.value.trim();
+    let msg = '';
+    if (rules.required && !val)              msg = rules.required;
+    else if (rules.min && val && (isNaN(val) || Number(val) < rules.min))
+                                             msg = rules.minMsg;
+
+    if (msg) {
+      input.classList.add('is-invalid');
+      input.classList.remove('is-valid');
+      errEl.textContent = msg;
+      return false;
+    }
+    input.classList.remove('is-invalid');
+    input.classList.add('is-valid');
+    errEl.textContent = '';
+    return true;
+  }
+
+  const addCatName  = document.getElementById('add_categoryName');
+  const addCatOrder = document.getElementById('add_displayOrder');
+
+  if (addCatName) {
+    addCatName.addEventListener('input', function () {
+      validateAddCatField('add_categoryName', 'err_add_categoryName',
+        { required: 'Category name is required' });
+    });
+    addCatName.addEventListener('blur', function () {
+      validateAddCatField('add_categoryName', 'err_add_categoryName',
+        { required: 'Category name is required' });
+    });
+  }
+
+  if (addCatOrder) {
+    addCatOrder.addEventListener('input', function () {
+      validateAddCatField('add_displayOrder', 'err_add_displayOrder',
+        { min: 1, minMsg: 'Display order must be at least 1' });
+    });
+    addCatOrder.addEventListener('blur', function () {
+      validateAddCatField('add_displayOrder', 'err_add_displayOrder',
+        { min: 1, minMsg: 'Display order must be at least 1' });
+    });
+  }
+
+  // Block submit if live validation fails
+  const addCatForm = document.querySelector('#addCategoryModal form');
+  if (addCatForm) {
+    addCatForm.addEventListener('submit', function (e) {
+      const nameOk  = validateAddCatField('add_categoryName', 'err_add_categoryName',
+                        { required: 'Category name is required' });
+      const orderOk = validateAddCatField('add_displayOrder', 'err_add_displayOrder',
+                        { min: 1, minMsg: 'Display order must be at least 1' });
+      if (!nameOk || !orderOk) e.preventDefault();
+    });
+  }
+  // ─────────────────────────────────────────────────────────────────────────
+</script>
+
 <div class="modal fade" id="addCategoryModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -271,11 +335,12 @@
             <input type="text"
               class="form-control <%= (locals.addFieldErrors && locals.addFieldErrors.categoryName) ? 'is-invalid' : '' %>"
               name="categoryName"
+              id="add_categoryName"
               value="<%= (locals.addFormData && locals.addFormData.categoryName) ? locals.addFormData.categoryName : '' %>"
               placeholder="e.g., Marvel Comics">
-            <% if (locals.addFieldErrors && locals.addFieldErrors.categoryName) { %>
-              <div class="invalid-feedback"><%= locals.addFieldErrors.categoryName %></div>
-            <% } %>
+            <div class="invalid-feedback" id="err_add_categoryName">
+              <%= (locals.addFieldErrors && locals.addFieldErrors.categoryName) ? locals.addFieldErrors.categoryName : '' %>
+            </div>
           </div>
 
           <div class="mb-3">
@@ -315,11 +380,12 @@
               <input type="number"
                 class="form-control <%= (locals.addFieldErrors && locals.addFieldErrors.displayOrder) ? 'is-invalid' : '' %>"
                 name="displayOrder"
+                id="add_displayOrder"
                 placeholder="1" min="1"
                 value="<%= (locals.addFormData && locals.addFormData.displayOrder) ? locals.addFormData.displayOrder : 1 %>">
-              <% if (locals.addFieldErrors && locals.addFieldErrors.displayOrder) { %>
-                <div class="invalid-feedback"><%= locals.addFieldErrors.displayOrder %></div>
-              <% } %>
+              <div class="invalid-feedback" id="err_add_displayOrder">
+                <%= (locals.addFieldErrors && locals.addFieldErrors.displayOrder) ? locals.addFieldErrors.displayOrder : '' %>
+              </div>
             </div>
             <div class="col-md-6 mb-3">
               <label class="form-label">Status</label>

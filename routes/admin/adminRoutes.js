@@ -13,7 +13,8 @@ import {
     createUser,
     updateUser,
     deleteUser,
-    viewUser
+    viewUser,
+    checkEmailAvailability ,
 } from '../../controllers/admin/adminUserController.js';
 
 import {
@@ -38,6 +39,45 @@ import {
  getPageSettings,
  updatePageSettings
 } from "../../controllers/admin/pageSettingsController.js";
+
+import {
+    getOrders,
+    getOrderDetail,
+    updateOrderStatus,
+    updateUnitStatus,
+    getManageRequests, 
+    resolveCancel, 
+    resolveReturn 
+} from '../../controllers/admin/orderController.js';
+
+import {
+    getStock,
+    updateStock,
+    getStockHistory,
+} from '../../controllers/admin/stockController.js';
+
+import {
+    getCoupons,
+    createCoupon,
+    toggleCoupon,
+    deleteCoupon,
+    updateCoupon,
+    
+} from '../../controllers/admin/couponController.js';
+
+import {
+    getOffers,
+    createOffer,
+    searchProductsApi,
+    toggleOffer,
+    deleteOffer,
+    updateOffer,
+} from '../../controllers/admin/offerController.js';
+
+import {
+    getSalesReport,
+    downloadReport,
+} from '../../controllers/admin/salesReportController.js';
 
 import { isAdminAuthenticated } from '../../middlewares/admin/adminAuth.middleware.js';
 import { uploadImage, uploadEditImages } from '../../middlewares/admin/upload.js';
@@ -80,6 +120,7 @@ router.post('/users', createUser);
 router.post('/users/update/:id', updateUser);
 router.post('/users/delete/:id', deleteUser);
 router.post('/users/toggle-block/:id', postToggleBlock);
+router.get('/users/check-email', checkEmailAvailability);
 
 
 // ───────── PRODUCTS ─────────
@@ -103,6 +144,41 @@ router.post('/categories/toggle-status/:id', toggleCategoryStatus);
 
 router.get("/pgSettings", getPageSettings);
 router.post("/pgSettings", updatePageSettings);
+
+// ───────── ORDERS ─────────
+router.get('/orders', getOrders);
+router.get('/orders/manage-requests',                          getManageRequests);
+router.post('/orders/:orderId/items/:itemId/resolve-cancel',   resolveCancel);
+router.post('/orders/:orderId/items/:itemId/resolve-return',   resolveReturn);
+router.get('/orders/:id', getOrderDetail);
+router.post('/orders/:id/status', updateOrderStatus);
+router.post('/orders/:orderId/items/:itemId/units/:unitIndex/status', updateUnitStatus);
+
+
+// ───────── STOCK MANAGEMENT ─────────
+router.get('/stock', getStock);
+router.post('/stock/:id', updateStock);
+router.get('/stock/:id/history', getStockHistory);
+
+
+// ───────── COUPON MANAGEMENT ─────────
+router.get('/coupons', getCoupons);
+router.post('/coupons/add', createCoupon);
+router.post('/coupons/:id/toggle', toggleCoupon);
+router.delete('/coupons/:id', deleteCoupon);
+router.post('/coupons/:id/edit', updateCoupon);
+
+// ───────── OFFER MANAGEMENT ─────────
+router.get('/offers', getOffers);
+router.post('/offers/add', createOffer);
+router.get('/products/search-api', searchProductsApi);
+router.post('/offers/:id/toggle', toggleOffer);
+router.delete('/offers/:id', deleteOffer);
+router.post('/offers/:id/edit', updateOffer);
+
+// ───────── SALES REPORTS ─────────
+router.get('/sales', getSalesReport);
+router.get('/sales/download', downloadReport);
 
 
 export default router;

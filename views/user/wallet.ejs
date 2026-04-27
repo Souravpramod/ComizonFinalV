@@ -194,8 +194,10 @@
           <% } else { %>
             <% transactions.forEach(txn => { %>
               <div class="txn-row">
-                <div class="txn-icon <%= txn.type %>">
-                  <% if (txn.type === 'credit') { %>
+                <div class="txn-icon <%= txn.reason === 'payment_failed' ? 'debit' : txn.type %>">
+                  <% if (txn.reason === 'payment_failed') { %>
+                    <i class="fas fa-times"></i>
+                  <% } else if (txn.type === 'credit') { %>
                     <i class="fas fa-arrow-down"></i>
                   <% } else { %>
                     <i class="fas fa-arrow-up"></i>
@@ -210,17 +212,21 @@
                       <%= new Date(txn.createdAt).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' }) %>
                     </span>
                     <span class="reason-badge
-                      <%= txn.reason === 'topup'         ? 'bg-primary text-white'  :
-                          txn.reason === 'order_payment' ? 'bg-danger text-white'   :
-                          txn.reason === 'order_refund'  ? 'bg-success text-white'  :
-                                                           'bg-secondary text-white' %>">
+                      <%= txn.reason === 'topup'           ? 'bg-primary text-white'  :
+                          txn.reason === 'order_payment'   ? 'bg-danger text-white'   :
+                          txn.reason === 'order_refund'    ? 'bg-success text-white'  :
+                          txn.reason === 'payment_failed'  ? 'bg-danger text-white'   :
+                                                             'bg-secondary text-white' %>">
+                      <% if (txn.reason === 'payment_failed') { %>
+                        <i class="fas fa-times me-1"></i>
+                      <% } %>
                       <%= txn.reason.replace(/_/g,' ') %>
                     </span>
                   </div>
                 </div>
                 <div>
-                  <div class="txn-amount <%= txn.type %>">
-                    <%= txn.type === 'credit' ? '+' : '-' %>$<%= txn.amount.toFixed(2) %>
+                  <div class="txn-amount <%= txn.reason === 'payment_failed' ? 'debit' : txn.type %>">
+                    <%= txn.reason === 'payment_failed' ? '+' : txn.type === 'credit' ? '+' : '-' %>$<%= txn.amount.toFixed(2) %>
                   </div>
                   <div class="text-white-50 text-end" style="font-size:.68rem;">
                     Bal: $<%= txn.balanceAfter.toFixed(2) %>
@@ -267,6 +273,10 @@
         const data = await res.json();
         if (!data.success) throw new Error(data.error || 'Failed to create order');
 
+        // Track whether payment succeeded — used in ondismiss to detect failure
+        let paymentSucceeded = false;
+        let paymentFailedData = null;
+
         const options = {
           key:         data.key,
           amount:      data.amount,
@@ -275,6 +285,7 @@
           description: 'Wallet Top-up',
           order_id:    data.razorpayOrderId,
           handler: async function (response) {
+            paymentSucceeded = true;
             msgEl.innerHTML = '<span class="text-white-50"><i class="fas fa-spinner fa-spin me-1"></i>Verifying payment…</span>';
             const verifyRes = await fetch('/profile/wallet/topup/verify', {
               method:  'POST',
@@ -283,17 +294,14 @@
                 razorpay_order_id:   response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature:  response.razorpay_signature,
-                amount:              data.amount,   // paise
+                amount:              data.amount,
               }),
             });
             const rawText = await verifyRes.text();
             let result;
-            try {
-              result = JSON.parse(rawText);
-            } catch (_) {
-              console.error('Server returned non-JSON:', rawText);
-              throw new Error('Server error during verification. Check console for details.');
-            }
+            try { result = JSON.parse(rawText); }
+            catch (_) { throw new Error('Server error during verification.'); }
+
             if (result.success) {
               document.getElementById('liveBalance').textContent = '$' + result.newBalance.toFixed(2);
               msgEl.innerHTML = '<span class="text-success"><i class="fas fa-check-circle me-1"></i>$' + amount.toFixed(2) + ' added successfully! Refreshing…</span>';
@@ -308,13 +316,43 @@
           },
           theme:  { color: '#E63946' },
           modal: {
-            ondismiss: function () {
-              msgEl.innerHTML = '<span class="text-white-50">Payment cancelled.</span>';
+            escape: false,  // prevent closing on outside click
+            ondismiss: async function () {
+              // If payment.failed fired before dismiss, paymentFailedData is set
+              // If payment never succeeded and modal closed, treat as failure
+              if (!paymentSucceeded) {
+                const errDesc = paymentFailedData?.description || 'Payment was not completed';
+                msgEl.innerHTML = '<span class="text-danger"><i class="fas fa-times-circle me-1"></i>Payment failed: ' + errDesc + '</span>';
+
+                try {
+                  await fetch('/profile/wallet/topup/failed', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({
+                      amount:            data.amount,
+                      error_description: errDesc,
+                      razorpay_order_id: data.razorpayOrderId,
+                    }),
+                  });
+                } catch (_) {}
+
+                // Redirect to wallet page with error query so the failure
+                // shows in transaction history after reload
+                setTimeout(() => {
+                  window.location.href = '/profile/wallet?error=' + encodeURIComponent('Top-up failed: ' + errDesc);
+                }, 1500);
+              }
             },
           },
         };
 
         const rzp = new Razorpay(options);
+
+
+        rzp.on('payment.failed', function (response) {
+          paymentFailedData = response.error;
+        });
+
         rzp.open();
       } catch (err) {
         console.error(err);

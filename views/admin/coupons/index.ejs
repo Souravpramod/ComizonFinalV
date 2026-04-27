@@ -1,0 +1,852 @@
+<%- include('../../partials/admin-head') %>
+
+<body class="bg-black text-light">
+  <%- include('../../partials/admin-sidebar') %>
+
+  <div class="main-content">
+    <%- include('../../partials/admin-header') %>
+
+    <div class="admin-content p-4">
+
+      <% if (locals.error) { %>
+        <div class="alert alert-danger alert-dismissible fade show rounded-0">
+          <%= error %>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      <% } %>
+      <% if (locals.success) { %>
+        <div class="alert alert-success alert-dismissible fade show rounded-0">
+          <%= success %>
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      <% } %>
+
+      <!-- Header -->
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h4 class="mb-0" style="color:var(--admin-gold);">Coupon Management</h4>
+          <p class="text-muted small mb-0">Create and manage discount coupons</p>
+        </div>
+        <button class="btn btn-warning btn-sm fw-bold rounded-0" data-bs-toggle="modal" data-bs-target="#createCouponModal">
+          <i class="fas fa-plus me-1"></i> New Coupon
+        </button>
+      </div>
+
+      <!-- Filters -->
+      <form method="GET" action="/admin/coupons" class="row g-2 mb-4">
+        <div class="col-md-5">
+          <input type="text" name="search" class="form-control form-control-sm bg-dark text-light border-secondary rounded-0"
+            placeholder="Search code or description..." value="<%= search %>">
+        </div>
+        <div class="col-md-3">
+          <select name="status" class="form-select form-select-sm bg-dark text-light border-secondary rounded-0">
+            <option value="">All Statuses</option>
+            <option value="active"   <%= status==='active'   ? 'selected':'' %>>Active</option>
+            <option value="inactive" <%= status==='inactive' ? 'selected':'' %>>Inactive</option>
+            <option value="expired"  <%= status==='expired'  ? 'selected':'' %>>Expired</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-outline-warning btn-sm w-100 rounded-0">Filter</button>
+        </div>
+        <div class="col-md-2">
+          <a href="/admin/coupons" class="btn btn-outline-secondary btn-sm w-100 rounded-0">Reset</a>
+        </div>
+      </form>
+
+      <!-- Stats -->
+      <div class="row mb-4">
+        <div class="col-md-4">
+          <div class="admin-stat-card" style="border-left:3px solid var(--admin-gold);">
+            <div class="d-flex align-items-center gap-3">
+              <div class="stat-icon" style="background:rgba(255,193,7,.15);color:var(--admin-gold);"><i class="fas fa-ticket-alt"></i></div>
+              <div>
+                <div class="stat-value text-warning"><%= totalCoupons %></div>
+                <div class="stat-label text-muted small">Total Coupons</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="card bg-dark border-secondary rounded-0">
+        <div class="card-body p-0">
+          <% if (coupons.length === 0) { %>
+            <div class="text-center py-5 text-muted">
+              <i class="fas fa-ticket-alt fa-3x mb-3"></i>
+              <p>No coupons found.</p>
+            </div>
+          <% } else { %>
+          <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0">
+              <thead style="color:var(--admin-gold);">
+                <tr>
+                  <th>Code</th><th>Type</th><th>Discount</th><th>Min Order</th>
+                  <th>Eligibility</th><th>Used</th><th>Expires</th><th>Status</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% coupons.forEach(c => { %>
+                  <%
+                    const now = new Date();
+                    const expired = c.expiresAt && new Date(c.expiresAt) < now;
+                    const label = c.discountType === 'flat'
+                      ? `$${c.discountValue} OFF`
+                      : `${c.discountValue}% OFF${c.maxDiscount ? ` (max $${c.maxDiscount})` : ''}`;
+                  %>
+                  <tr>
+                    <td><span class="badge bg-warning text-dark fw-bold"><%= c.code %></span></td>
+                    <td><span class="badge bg-secondary"><%= c.discountType %></span></td>
+                    <td class="text-warning fw-semibold"><%= label %></td>
+                    <td>$<%= c.minOrderAmount %></td>
+                    <td>
+                      <span class="badge <%= c.eligibility==='new_user' ? 'bg-info' : c.eligibility==='loyal' ? 'bg-primary' : 'bg-secondary' %>">
+                        <%= c.eligibility %>
+                      </span>
+                    </td>
+                    <td><%= c.usedCount %><% if (c.usageLimitTotal) { %> / <%= c.usageLimitTotal %><% } %></td>
+                    <td class="<%= expired ? 'text-danger' : 'text-muted' %> small">
+                      <%= c.expiresAt ? new Date(c.expiresAt).toLocaleDateString('en-IN') : 'Never' %>
+                    </td>
+                    <td>
+                      <% if (expired) { %>
+                        <span class="badge bg-danger">Expired</span>
+                      <% } else { %>
+                        <span class="badge <%= c.isActive ? 'bg-success' : 'bg-secondary' %>">
+                          <%= c.isActive ? 'Active' : 'Inactive' %>
+                        </span>
+                      <% } %>
+                    </td>
+                     <td>
+                      <div class="d-flex gap-1">
+                        <button class="btn btn-sm rounded-0 <%= c.isActive ? 'btn-outline-warning' : 'btn-outline-success' %> toggle-btn"
+                          data-id="<%= c._id %>" title="<%= c.isActive ? 'Deactivate' : 'Activate' %>">
+                          <i class="fas <%= c.isActive ? 'fa-pause' : 'fa-play' %>"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-info rounded-0 edit-coupon-btn" title="Edit"
+                          data-id="<%= c._id %>"
+                          data-code="<%= c.code %>"
+                          data-description="<%= c.description || '' %>"
+                          data-discounttype="<%= c.discountType %>"
+                          data-discountvalue="<%= c.discountValue %>"
+                          data-maxdiscount="<%= c.maxDiscount || '' %>"
+                          data-minorderamount="<%= c.minOrderAmount || 0 %>"
+                          data-eligibility="<%= c.eligibility %>"
+                          data-loyaltythreshold="<%= c.loyaltyThreshold || 5 %>"
+                          data-usagelimittotal="<%= c.usageLimitTotal || '' %>"
+                          data-usagelimitperuser="<%= c.usageLimitPerUser || 1 %>"
+                          data-expiresat="<%= c.expiresAt ? new Date(c.expiresAt).toISOString().slice(0,10) : '' %>"
+                          data-allowdoublediscount="<%= c.allowDoubleDiscount ? 'true' : 'false' %>"
+                          data-categoryid="<%= c.categoryId || '' %>"
+                          data-applyscope="<%= c.applyScope || 'cart' %>"
+                          data-minproductqty="<%= c.minProductQty || 0 %>">
+                          <i class="fas fa-pen"></i>
+                        </button>
+                        <% if (c.usedCount === 0) { %>
+                          <button class="btn btn-sm btn-outline-danger rounded-0 delete-btn" data-id="<%= c._id %>" title="Delete">
+                            <i class="fas fa-trash"></i>
+                          </button>
+                        <% } %>
+                      </div>
+                    </td>
+ 
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <% if (totalPages > 1) { %>
+        <nav class="mt-3">
+          <ul class="pagination pagination-sm justify-content-center mb-0">
+            <% for (let i = 1; i <= totalPages; i++) { %>
+              <li class="page-item <%= i === currentPage ? 'active' : '' %>">
+                <a class="page-link bg-dark border-secondary text-light rounded-0"
+                   href="/admin/coupons?page=<%= i %>&search=<%= encodeURIComponent(search) %>&status=<%= status %>">
+                  <%= i %>
+                </a>
+              </li>
+            <% } %>
+          </ul>
+        </nav>
+      <% } %>
+
+    </div><!-- /admin-content -->
+  </div><!-- /main-content -->
+
+  <!-- Create Coupon Modal -->
+  <div class="modal fade" id="createCouponModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content bg-dark text-light border-secondary rounded-0">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title" style="color:var(--admin-gold);">Create New Coupon</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="createCouponForm" novalidate>
+          <div class="modal-body">
+            <!-- Backend errors appear here, inside the modal -->
+            <div id="modalErrorBox" class="alert alert-danger rounded-0 py-2 small mb-3" style="display:none;"></div>
+            <div class="row g-3">
+
+              <div class="col-md-6">
+                <label class="form-label text-info small">Coupon Code *</label>
+                <input type="text" name="code" class="form-control bg-dark text-light border-secondary rounded-0"
+                  placeholder="e.g. SAVE20" style="text-transform:uppercase;">
+                <div class="field-error" data-for="code"></div>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label text-info small">Description</label>
+                <input type="text" name="description" class="form-control bg-dark text-light border-secondary rounded-0"
+                  placeholder="Short description">
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label text-info small">Discount Type *</label>
+                <select name="discountType" id="discountTypeSelect" class="form-select bg-dark text-light border-secondary rounded-0">
+                  <option value="flat">Flat ($)</option>
+                  <option value="percent">Percentage (%)</option>
+                </select>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label text-info small">Discount Value *</label>
+                <input type="number" name="discountValue" min="0" step="0.01"
+                  class="form-control bg-dark text-light border-secondary rounded-0" >
+                <div class="field-error" data-for="discountValue"></div>
+              </div>
+
+              <div class="col-md-4" id="maxDiscountWrap">
+                <label class="form-label text-info small">
+                  Max Discount Cap ($) <span class="text-danger" id="maxDiscRequired">*</span>
+                </label>
+                <input type="number" name="maxDiscount" min="0.01" step="0.01"
+                  class="form-control bg-dark text-light border-secondary rounded-0" placeholder="">
+                <div class="field-error" data-for="maxDiscount"></div>
+                <div class="form-text text-muted small">Mandatory for percentage coupons — prevents unlimited discounts on large orders.</div>
+              </div>
+
+              <div class="col-md-4" id="minOrderWrap">
+                <label class="form-label text-info small">Min Order Amount ($) <span class="text-muted small fw-normal">(flat only)</span></label>
+                <input type="number" name="minOrderAmount" min="0" step="0.01" value="0"
+                  class="form-control bg-dark text-light border-secondary rounded-0"
+                  placeholder="e.g. 50 — cart must be at least $50">
+                <div class="field-error" data-for="minOrderAmount"></div>
+                <div class="form-text text-muted small">Not required for percentage discounts.</div>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label text-info small">Eligibility</label>
+                <select name="eligibility" id="eligibilitySelect" class="form-select bg-dark text-light border-secondary rounded-0">
+                  <option value="all">All Users</option>
+                  <option value="new_user">New Users Only</option>
+                  <option value="loyal">Loyal Users</option>
+                  <option value="bank">Bank Offer</option>
+                  <option value="referred">reffered user</option>
+                </select>
+              </div>
+
+              <div class="col-md-4" id="loyaltyWrap" style="display:none;">
+                <label class="form-label text-info small">Loyalty Threshold (orders)</label>
+                <input type="number" name="loyaltyThreshold" min="1" value="5"
+                  class="form-control bg-dark text-light border-secondary rounded-0">
+                <div class="field-error" data-for="loyaltyThreshold"></div>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label text-info small">Usage Limit (total)</label>
+                <input type="number" name="usageLimitTotal" min="1"
+                  class="form-control bg-dark text-light border-secondary rounded-0" placeholder="Leave blank = unlimited">
+                <div class="field-error" data-for="usageLimitTotal"></div>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label text-info small">Per-User Limit</label>
+                <input type="number" name="usageLimitPerUser" min="1" value="1"
+                  class="form-control bg-dark text-light border-secondary rounded-0">
+                <div class="field-error" data-for="usageLimitPerUser"></div>
+              </div>
+
+              <div class="col-md-4">
+                <label class="form-label text-info small">Expiry Date</label>
+                <input type="date" name="expiresAt"
+                  class="form-control bg-dark text-light border-secondary rounded-0">
+                <div class="field-error" data-for="expiresAt"></div>
+                <div class="form-text text-muted small">Must be a future date.</div>
+              </div>
+
+              <!-- ── Category restriction ── -->
+              <div class="col-md-6">
+                <label class="form-label text-info small">Category Restriction</label>
+                <select name="categoryId" id="categorySelect" class="form-select bg-dark text-light border-secondary rounded-0">
+                  <option value="">All Categories</option>
+                  <% (locals.categories || []).forEach(cat => { %>
+                    <option value="<%= cat._id %>"><%= cat.categoryName %></option>
+                  <% }) %>
+                </select>
+                <div class="form-text text-muted small">Leave as "All" to apply to any product in cart.</div>
+              </div>
+
+              <!-- ── Apply scope (visible only when a category is chosen) ── -->
+              <div class="col-md-6" id="applyScopeWrap" style="display:none;">
+                <label class="form-label text-info small">Apply Discount To</label>
+                <select name="applyScope" id="applyScopeSelect" class="form-select bg-dark text-light border-secondary rounded-0">
+                  <option value="cart">Entire Cart Total</option>
+                  <option value="product">Matched Category Products Only</option>
+                </select>
+                <div class="form-text text-muted small">
+                  "Matched only" computes discount on just the matched product(s) subtotal.
+                </div>
+              </div>
+
+              <!-- ── Min product qty (visible only when category is chosen) ── -->
+              <div class="col-md-6" id="minProductQtyWrap" style="display:none;">
+                <label class="form-label text-info small">Min Quantity of Matched Product</label>
+                <input type="number" name="minProductQty" min="0" value="0"
+                  class="form-control bg-dark text-light border-secondary rounded-0">
+                <div class="form-text text-muted small">
+                  0 = just needs to be present. e.g. set 2 to require at least 2 units of the matching product.
+                </div>
+              </div>
+
+              <!-- Allow Double Discount ("Allow Dip") toggle -->
+              <div class="col-12">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="allowDoubleDiscount" id="allowDipToggle" value="on">
+                  <label class="form-check-label text-info small" for="allowDipToggle">
+                    <i class="fas fa-layer-group me-1"></i>
+                    <strong>Allow Dip</strong> — Let users stack this coupon on top of an active product/category offer
+                  </label>
+                </div>
+                <div class="form-text text-muted small ms-4">By default, coupons cannot be combined with offers. Enable this to allow both.</div>
+              </div>
+
+            </div>
+          </div>
+          <div class="modal-footer border-secondary">
+            <button type="button" class="btn btn-outline-secondary rounded-0" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-warning rounded-0 fw-bold">Create Coupon</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+<!-- Edit Coupon Modal -->
+  <div class="modal fade" id="editCouponModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content bg-dark text-light border-secondary rounded-0">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title" style="color:var(--admin-gold);">Edit Coupon</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="editCouponForm" novalidate>
+          <div class="modal-body">
+            <div id="editCouponModalError" class="alert alert-danger rounded-0 py-2 small mb-3" style="display:none;"></div>
+            <div class="row g-3">
+ 
+              <div class="col-md-6">
+                <label class="form-label text-info small">Coupon Code *</label>
+                <input type="text" name="code" id="editCouponCode"
+                  class="form-control bg-dark text-light border-secondary rounded-0" style="text-transform:uppercase;">
+                <div class="field-error" data-for="code"></div>
+              </div>
+ 
+              <div class="col-md-6">
+                <label class="form-label text-info small">Description</label>
+                <input type="text" name="description" id="editCouponDescription"
+                  class="form-control bg-dark text-light border-secondary rounded-0">
+              </div>
+ 
+              <div class="col-md-4">
+                <label class="form-label text-info small">Discount Type *</label>
+                <select name="discountType" id="editDiscountTypeSelect" class="form-select bg-dark text-light border-secondary rounded-0">
+                  <option value="flat">Flat ($)</option>
+                  <option value="percent">Percentage (%)</option>
+                </select>
+              </div>
+ 
+              <div class="col-md-4">
+                <label class="form-label text-info small">Discount Value *</label>
+                <input type="number" name="discountValue" id="editDiscountValue"
+                  min="0" step="0.01" class="form-control bg-dark text-light border-secondary rounded-0">
+                <div class="field-error" data-for="discountValue"></div>
+              </div>
+ 
+              <div class="col-md-4" id="editMaxDiscountWrap">
+                <label class="form-label text-info small">Max Discount Cap ($) <span class="text-danger" id="editMaxDiscRequired">*</span></label>
+                <input type="number" name="maxDiscount" id="editMaxDiscount"
+                  min="0.01" step="0.01" class="form-control bg-dark text-light border-secondary rounded-0">
+                <div class="field-error" data-for="maxDiscount"></div>
+              </div>
+ 
+              <div class="col-md-4">
+                <label class="form-label text-info small">Min Order Amount ($)</label>
+                <input type="number" name="minOrderAmount" id="editMinOrderAmount"
+                  min="0" step="0.01" class="form-control bg-dark text-light border-secondary rounded-0">
+                <div class="field-error" data-for="minOrderAmount"></div>
+              </div>
+ 
+              <div class="col-md-4">
+                <label class="form-label text-info small">Eligibility</label>
+                <select name="eligibility" id="editEligibilitySelect" class="form-select bg-dark text-light border-secondary rounded-0">
+                  <option value="all">All Users</option>
+                  <option value="new_user">New Users Only</option>
+                  <option value="loyal">Loyal Users</option>
+                  <option value="bank">Bank Offer</option>
+                  <option value="referred">reffered user</option>
+                </select>
+              </div>
+ 
+              <div class="col-md-4" id="editLoyaltyWrap" style="display:none;">
+                <label class="form-label text-info small">Loyalty Threshold (orders)</label>
+                <input type="number" name="loyaltyThreshold" id="editLoyaltyThreshold"
+                  min="1" class="form-control bg-dark text-light border-secondary rounded-0">
+                <div class="field-error" data-for="loyaltyThreshold"></div>
+              </div>
+ 
+              <div class="col-md-4">
+                <label class="form-label text-info small">Usage Limit (total)</label>
+                <input type="number" name="usageLimitTotal" id="editUsageLimitTotal"
+                  min="1" class="form-control bg-dark text-light border-secondary rounded-0" placeholder="Leave blank = unlimited">
+                <div class="field-error" data-for="usageLimitTotal"></div>
+              </div>
+ 
+              <div class="col-md-4">
+                <label class="form-label text-info small">Per-User Limit</label>
+                <input type="number" name="usageLimitPerUser" id="editUsageLimitPerUser"
+                  min="1" class="form-control bg-dark text-light border-secondary rounded-0">
+                <div class="field-error" data-for="usageLimitPerUser"></div>
+              </div>
+ 
+              <div class="col-md-4">
+                <label class="form-label text-info small">Expiry Date</label>
+                <input type="date" name="expiresAt" id="editExpiresAt"
+                  class="form-control bg-dark text-light border-secondary rounded-0">
+                <div class="field-error" data-for="expiresAt"></div>
+              </div>
+ 
+              <div class="col-md-6">
+                <label class="form-label text-info small">Category Restriction</label>
+                <select name="categoryId" id="editCategoryId" class="form-select bg-dark text-light border-secondary rounded-0">
+                  <option value="">All Categories</option>
+                  <% (locals.categories || []).forEach(cat => { %>
+                    <option value="<%= cat._id %>"><%= cat.categoryName %></option>
+                  <% }) %>
+                </select>
+              </div>
+ 
+              <div class="col-md-6" id="editApplyScopeWrap" style="display:none;">
+                <label class="form-label text-info small">Apply Discount To</label>
+                <select name="applyScope" id="editApplyScopeSelect" class="form-select bg-dark text-light border-secondary rounded-0">
+                  <option value="cart">Entire Cart Total</option>
+                  <option value="product">Matched Category Products Only</option>
+                </select>
+              </div>
+ 
+              <div class="col-md-6" id="editMinProductQtyWrap" style="display:none;">
+                <label class="form-label text-info small">Min Quantity of Matched Product</label>
+                <input type="number" name="minProductQty" id="editMinProductQty"
+                  min="0" class="form-control bg-dark text-light border-secondary rounded-0">
+              </div>
+ 
+              <div class="col-12">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="allowDoubleDiscount" id="editAllowDipToggle" value="on">
+                  <label class="form-check-label text-info small" for="editAllowDipToggle">
+                    <i class="fas fa-layer-group me-1"></i>
+                    <strong>Allow Dip</strong> — Stack this coupon on top of an active product/category offer
+                  </label>
+                </div>
+              </div>
+ 
+            </div>
+          </div>
+          <div class="modal-footer border-secondary">
+            <button type="button" class="btn btn-outline-secondary rounded-0" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-info rounded-0 fw-bold text-dark" id="editCouponSubmitBtn">
+              <span id="editCouponBtnText">Save Changes</span>
+              <span id="editCouponBtnSpinner" class="d-none">
+                <span class="spinner-border spinner-border-sm me-1"></span>Saving…
+              </span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+ 
+</body>
+
+<style>
+  .field-error { display:none; color:#dc3545; font-size:0.78rem; margin-top:3px; }
+  .input-error  { border-color:#dc3545 !important; box-shadow:0 0 0 .2rem rgba(220,53,69,.25) !important; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+
+function showToast(msg, type='danger') {
+    const id = 'toast_' + Date.now();
+    const bg = type === 'success' ? 'bg-success' : type === 'warning' ? 'bg-warning text-dark' : 'bg-danger';
+    const el = document.createElement('div');
+    el.id = id;
+    el.className = `toast align-items-center text-white border-0 ${bg} position-fixed rounded-0`;
+    el.style.cssText = 'top:80px;right:20px;z-index:9999;min-width:280px;';
+    el.setAttribute('role','alert');
+    el.innerHTML = `<div class="d-flex"><div class="toast-body fw-semibold">${msg}</div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+    document.body.appendChild(el);
+    const t = new bootstrap.Toast(el, { delay: 4000 });
+    t.show();
+    el.addEventListener('hidden.bs.toast', () => el.remove());
+}
+const discTypeSelect = document.getElementById('discountTypeSelect');
+const maxDiscWrap    = document.getElementById('maxDiscountWrap');
+const maxDiscReq     = document.getElementById('maxDiscRequired');
+
+discTypeSelect.addEventListener('change', function() {
+  const isPercent = this.value === 'percent';
+  maxDiscWrap.style.display  = isPercent ? '' : 'none';
+  maxDiscReq.style.display   = isPercent ? '' : 'none';
+  document.getElementById('minOrderWrap').style.display = isPercent ? 'none' : '';
+});
+
+document.getElementById('eligibilitySelect').addEventListener('change', function() {
+  document.getElementById('loyaltyWrap').style.display = this.value === 'loyal' ? '' : 'none';
+});
+
+document.getElementById('categorySelect').addEventListener('change', function() {
+  const hasCat = this.value !== '';
+  document.getElementById('applyScopeWrap').style.display   = hasCat ? '' : 'none';
+  document.getElementById('minProductQtyWrap').style.display = hasCat ? '' : 'none';
+  if (!hasCat) {
+    document.getElementById('applyScopeSelect').value = 'cart';
+    document.querySelector('[name="minProductQty"]').value = '0';
+  }
+});
+
+// ── Create coupon via fetch so errors show inside the modal ──────────────────
+document.getElementById('createCouponForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const errorBox  = document.getElementById('modalErrorBox');
+  const submitBtn = this.querySelector('button[type="submit"]');
+
+  errorBox.style.display = 'none';
+  errorBox.innerHTML     = '';
+  submitBtn.disabled     = true;
+  submitBtn.textContent  = 'Creating…';
+
+  try {
+    const res  = await fetch('/admin/coupons/add', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(Object.fromEntries(new FormData(this))),
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      // Success — reload the page to show the new coupon in the table
+      window.location.reload();
+    } else {
+      // Show errors inside the modal
+      errorBox.innerHTML     = data.errors.map(e => `<div>• ${e}</div>`).join('');
+      errorBox.style.display = 'block';
+      submitBtn.disabled     = false;
+      submitBtn.textContent  = 'Create Coupon';
+    }
+  } catch (err) {
+    errorBox.innerHTML     = '<div>• Network error. Please try again.</div>';
+    errorBox.style.display = 'block';
+    submitBtn.disabled     = false;
+    submitBtn.textContent  = 'Create Coupon';
+  }
+});
+
+
+
+// Toggle coupon active/inactive
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+  btn.addEventListener('click', async function() {
+    const id = this.dataset.id;
+    try {
+      const res = await fetch(`/admin/coupons/${id}/toggle`, { method: 'POST' });
+      const data = await res.json();
+      
+      if (data.ok) {
+        // Option 1: Silent reload (current behavior)
+        location.reload(); 
+      } else {
+        // Create a dynamic Bootstrap alert for better UI
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show rounded-0 position-fixed top-0 start-50 translate-middle-x mt-3';
+        alertDiv.style.zIndex = '9999';
+        alertDiv.innerHTML = `
+          <i class="fas fa-exclamation-circle me-2"></i>
+          <strong>Error:</strong> ${data.message}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(alertDiv);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => alertDiv.remove(), 5000);
+      }
+    } catch (err) {
+      console.error('Fetch error:', err);
+      showToast('Network error: Could not reach the server.');
+    }
+  });
+});
+
+// Delete coupon
+document.querySelectorAll('.delete-btn').forEach(btn => {
+  btn.addEventListener('click', async function() {
+    if (!confirm('Delete this coupon? This cannot be undone.')) return;
+    const id = this.dataset.id;
+    try {
+      const res  = await fetch(`/admin/coupons/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.ok) location.reload();
+      else {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show rounded-0 position-fixed top-0 start-50 translate-middle-x mt-3';
+        alertDiv.style.zIndex = 9999;
+        alertDiv.innerHTML = `<i class="fas fa-exclamation-circle me-2"></i>${data.message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+        document.body.appendChild(alertDiv);
+        setTimeout(() => alertDiv.remove(), 5000);
+      }
+    } catch(err) { showToast('Network error. Please try again.'); }
+  });
+});
+ 
+// ── Edit coupon: populate modal ───────────────────────────────────────────────
+let editingCouponId = null;
+ 
+document.querySelectorAll('.edit-coupon-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    editingCouponId = this.dataset.id;
+ 
+    document.getElementById('editCouponCode').value          = this.dataset.code;
+    document.getElementById('editCouponDescription').value   = this.dataset.description;
+    document.getElementById('editDiscountValue').value       = this.dataset.discountvalue;
+    document.getElementById('editMaxDiscount').value         = this.dataset.maxdiscount;
+    document.getElementById('editMinOrderAmount').value      = this.dataset.minorderamount;
+    document.getElementById('editLoyaltyThreshold').value    = this.dataset.loyaltythreshold;
+    document.getElementById('editUsageLimitTotal').value     = this.dataset.usagelimittotal;
+    document.getElementById('editUsageLimitPerUser').value   = this.dataset.usagelimitperuser;
+    document.getElementById('editExpiresAt').value           = this.dataset.expiresat;
+    document.getElementById('editMinProductQty').value       = this.dataset.minproductqty;
+ 
+    // Selects
+    document.getElementById('editDiscountTypeSelect').value  = this.dataset.discounttype;
+    document.getElementById('editEligibilitySelect').value   = this.dataset.eligibility;
+    document.getElementById('editApplyScopeSelect').value    = this.dataset.applyscope;
+    document.getElementById('editCategoryId').value          = this.dataset.categoryid;
+ 
+    // Checkbox
+    document.getElementById('editAllowDipToggle').checked = this.dataset.allowdoublediscount === 'true';
+ 
+    // Conditional visibility
+    const isPercent = this.dataset.discounttype === 'percent';
+    document.getElementById('editMaxDiscountWrap').style.display  = isPercent ? '' : 'none';
+    document.getElementById('editMaxDiscRequired').style.display  = isPercent ? '' : 'none';
+    document.getElementById('editLoyaltyWrap').style.display      = this.dataset.eligibility === 'loyal' ? '' : 'none';
+    const hasCat = this.dataset.categoryid !== '';
+    document.getElementById('editApplyScopeWrap').style.display    = hasCat ? '' : 'none';
+    document.getElementById('editMinProductQtyWrap').style.display  = hasCat ? '' : 'none';
+ 
+    // Clear errors
+    const errBox = document.getElementById('editCouponModalError');
+    errBox.style.display = 'none';
+    errBox.innerHTML     = '';
+ 
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('editCouponModal')).show();
+  });
+});
+ 
+// Discount type toggle inside edit modal
+document.getElementById('editDiscountTypeSelect').addEventListener('change', function() {
+  const isPercent = this.value === 'percent';
+  document.getElementById('editMaxDiscountWrap').style.display = isPercent ? '' : 'none';
+  document.getElementById('editMaxDiscRequired').style.display = isPercent ? '' : 'none';
+});
+ 
+// Eligibility toggle inside edit modal
+document.getElementById('editEligibilitySelect').addEventListener('change', function() {
+  document.getElementById('editLoyaltyWrap').style.display = this.value === 'loyal' ? '' : 'none';
+});
+ 
+// Category toggle inside edit modal
+document.getElementById('editCategoryId').addEventListener('change', function() {
+  const hasCat = this.value !== '';
+  document.getElementById('editApplyScopeWrap').style.display    = hasCat ? '' : 'none';
+  document.getElementById('editMinProductQtyWrap').style.display  = hasCat ? '' : 'none';
+  if (!hasCat) {
+    document.getElementById('editApplyScopeSelect').value = 'cart';
+    document.getElementById('editMinProductQty').value    = '0';
+  }
+});
+ 
+// ── Edit coupon form submit ────────────────────────────────────────────────────
+document.getElementById('editCouponForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const errorBox  = document.getElementById('editCouponModalError');
+  const submitBtn = document.getElementById('editCouponSubmitBtn');
+  const btnText   = document.getElementById('editCouponBtnText');
+  const btnSpin   = document.getElementById('editCouponBtnSpinner');
+ 
+  errorBox.style.display = 'none';
+  errorBox.innerHTML     = '';
+  submitBtn.disabled     = true;
+  btnText.classList.add('d-none');
+  btnSpin.classList.remove('d-none');
+ 
+  try {
+    const res  = await fetch(`/admin/coupons/${editingCouponId}/edit`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(Object.fromEntries(new FormData(this))),
+    });
+    const data = await res.json();
+ 
+    if (data.ok) {
+      window.location.reload();
+    } else {
+      errorBox.innerHTML     = data.errors.map(e => `<div>• ${e}</div>`).join('');
+      errorBox.style.display = 'block';
+      submitBtn.disabled     = false;
+      btnText.classList.remove('d-none');
+      btnSpin.classList.add('d-none');
+    }
+  } catch (err) {
+    errorBox.innerHTML     = '<div>• Network error. Please try again.</div>';
+    errorBox.style.display = 'block';
+    submitBtn.disabled     = false;
+    btnText.classList.remove('d-none');
+    btnSpin.classList.add('d-none');
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  LIVE BACKEND VALIDATION
+//  Debounces form fields → hits your real create/edit endpoints
+//  with the current form data → maps errors back to each field
+// ═══════════════════════════════════════════════════════════════
+
+// Fields that have their own error div (must match data-for attrs)
+const VALIDATED_FIELDS = ['code','discountValue','maxDiscount','minOrderAmount',
+                          'loyaltyThreshold','usageLimitTotal','usageLimitPerUser','expiresAt'];
+
+// Which backend fields cross-affect others (re-validate these siblings too)
+const CROSS = {
+  discountType:     ['discountValue','maxDiscount','minOrderAmount'],
+  discountValue:    ['minOrderAmount'],
+  usageLimitTotal:  ['usageLimitPerUser'],
+  usageLimitPerUser:['usageLimitTotal'],
+  eligibility:      ['loyaltyThreshold'],
+};
+
+let _debounceTimers = {};
+
+function setFieldError(form, fieldName, msg) {
+  const errEl = form.querySelector(`.field-error[data-for="${fieldName}"]`);
+  const input = form.querySelector(`[name="${fieldName}"]`);
+  if (errEl) { errEl.textContent = msg || ''; errEl.style.display = msg ? 'block' : 'none'; }
+  if (input)  input.classList.toggle('input-error', !!msg);
+}
+
+function clearAllFieldErrors(form) {
+  form.querySelectorAll('.field-error').forEach(el => { el.textContent=''; el.style.display='none'; });
+  form.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
+}
+
+// Hit the real backend with current form data, get errors back, paint them per-field
+async function validateFormLive(form, changedFieldName) {
+  const isEdit   = form.id === 'editCouponForm';
+  const url      = isEdit ? `/admin/coupons/${editingCouponId}/edit` : '/admin/coupons/add';
+  const payload  = Object.fromEntries(new FormData(form));
+
+  // Add a sentinel so the backend knows this is a validation-only probe.
+  // If your backend doesn't support it, remove this line — errors still parse fine.
+  payload._validateOnly = '1';
+
+  try {
+    const res  = await fetch(url, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      // All good — clear errors for the changed field and its siblings
+      const toClear = [changedFieldName, ...(CROSS[changedFieldName] || [])];
+      toClear.forEach(f => setFieldError(form, f, null));
+    } else {
+      // Parse each error string and assign it to the matching field.
+      // We only update the fields that were triggered (changed + cross-deps),
+      // leaving unrelated fields untouched so you don't get cascading red on first load.
+      const triggered = new Set([changedFieldName, ...(CROSS[changedFieldName] || [])]);
+
+      // First clear the triggered fields, then re-paint whatever the backend returned
+      triggered.forEach(f => setFieldError(form, f, null));
+
+      (data.errors || []).forEach(msg => {
+        const matched = VALIDATED_FIELDS.find(f => {
+          if (!triggered.has(f)) return false;
+          // Match error message to field by keyword
+          const map = {
+            code:             /coupon code/i,
+            discountValue:    /discount value/i,
+            maxDiscount:      /max discount|discount cap/i,
+            minOrderAmount:   /min order|minimum order/i,
+            loyaltyThreshold: /loyalty/i,
+            usageLimitTotal:  /total usage/i,
+            usageLimitPerUser:/per.?user/i,
+            expiresAt:        /expir/i,
+          };
+          return map[f] && map[f].test(msg);
+        });
+        if (matched) setFieldError(form, matched, msg);
+      });
+    }
+  } catch (_) {
+    // Network error during live validation — fail silently, submit will catch it
+  }
+}
+
+function debounceValidate(form, fieldName, delay = 400) {
+  clearTimeout(_debounceTimers[fieldName]);
+  _debounceTimers[fieldName] = setTimeout(() => validateFormLive(form, fieldName), delay);
+}
+
+function attachLiveValidation(form) {
+  // text/number inputs
+  VALIDATED_FIELDS.forEach(name => {
+    const el = form.querySelector(`[name="${name}"]`);
+    if (!el) return;
+    el.addEventListener('input', () => debounceValidate(form, name));
+    el.addEventListener('blur',  () => debounceValidate(form, name, 0));
+  });
+
+  // selects that cross-affect other fields
+  Object.keys(CROSS).forEach(name => {
+    const el = form.querySelector(`[name="${name}"]`);
+    if (!el) return;
+    el.addEventListener('change', () => debounceValidate(form, name, 0));
+  });
+}
+
+// Attach to create form immediately
+attachLiveValidation(document.getElementById('createCouponForm'));
+
+// Attach to edit form each time the modal opens (data is freshly populated)
+document.getElementById('editCouponModal').addEventListener('shown.bs.modal', () => {
+  clearAllFieldErrors(document.getElementById('editCouponForm'));
+  attachLiveValidation(document.getElementById('editCouponForm'));
+});
+</script>

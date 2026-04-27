@@ -1,0 +1,206 @@
+<%- include('../partials/user-head', { title: 'My Coupons' }) %>
+
+<body class="bg-black text-light">
+  <%- include('../partials/header') %>
+
+  <style>
+    .profile-wrap  { margin-top: 90px; padding: 2rem 0 4rem; }
+    .section-title { font-size:.75rem; text-transform:uppercase; letter-spacing:1.5px; color:#E63946; font-weight:700; margin-bottom:1.2rem; border-left:3px solid #E63946; padding-left:.6rem; }
+    .coupon-card   { background:#1A1A1A; border:1px dashed #444; padding:1.2rem 1.4rem; transition:border-color .2s, box-shadow .2s; position:relative; overflow:hidden; }
+    .coupon-card::before {
+      content:'';
+      position:absolute; left:-14px; top:50%; transform:translateY(-50%);
+      width:28px; height:28px; border-radius:50%;
+      background:#000; border:1px dashed #444;
+    }
+    .coupon-card::after {
+      content:'';
+      position:absolute; right:-14px; top:50%; transform:translateY(-50%);
+      width:28px; height:28px; border-radius:50%;
+      background:#000; border:1px dashed #444;
+    }
+    .coupon-card:hover { border-color:#E63946; box-shadow:0 0 0 1px #E63946; }
+    .coupon-card.not-applicable { opacity:.55; filter:grayscale(.4); }
+    .coupon-code   { font-family:monospace; font-size:1.15rem; font-weight:700; color:#FFD700; letter-spacing:2px; }
+    .discount-pill { font-size:.8rem; background:#E63946; color:#fff; padding:3px 10px; font-weight:700; display:inline-block; }
+    .eligibility-badge { font-size:.65rem; padding:2px 7px; font-weight:700; text-transform:uppercase; border-radius:2px; }
+    .copy-btn { font-size:.7rem; background:transparent; border:1px solid #555; color:#aaa; padding:2px 8px; cursor:pointer; transition:all .2s; }
+    .copy-btn:hover { border-color:#E63946; color:#E63946; }
+    .expires-label { font-size:.7rem; color:#aaa; }
+    .saving-label  { font-size:.75rem; color:#28a745; font-weight:600; }
+    .tab-btn { background:#111; border:2px solid #333; color:#fff; padding:.35rem 1.1rem; font-size:.78rem; font-weight:600; cursor:pointer; transition:all .2s; }
+    .tab-btn.active { border-color:#E63946; color:#E63946; }
+  </style>
+
+  <div class="container profile-wrap">
+    <div class="row g-4">
+
+      <!-- Sidebar -->
+      <div class="col-lg-3">
+        <%- include('../partials/profile-sidebar', { user: locals.user, activePage: 'coupons' }) %>
+      </div>
+
+      <!-- Main -->
+      <div class="col-lg-9">
+
+        <% if (locals.error) { %>
+          <div class="alert alert-danger rounded-0 border-0 border-start border-4 border-danger mb-4">
+            <i class="fas fa-exclamation-circle me-2"></i><%= error %>
+          </div>
+        <% } %>
+        <% if (locals.success) { %>
+          <div class="alert alert-success rounded-0 border-0 border-start border-4 border-success mb-4">
+            <i class="fas fa-check-circle me-2"></i><%= success %>
+          </div>
+        <% } %>
+
+        <div class="d-flex align-items-center justify-content-between mb-4">
+          <h4 class="fw-bold mb-0 text-uppercase border-start border-3 border-danger ps-3">My Coupons</h4>
+          <span class="text-white-50 small"><%= coupons.length %> available</span>
+        </div>
+
+        <!-- Filter tabs -->
+        <div class="d-flex gap-2 mb-4">
+          <button class="tab-btn active" onclick="filterCoupons('all', this)">All</button>
+          <button class="tab-btn" onclick="filterCoupons('applicable', this)">Applicable Now</button>
+          <button class="tab-btn" onclick="filterCoupons('new_user', this)">New User</button>
+          <button class="tab-btn" onclick="filterCoupons('loyal', this)">Loyalty</button>
+          <button class="tab-btn" onclick="filterCoupons('bank', this)">Bank Offers</button>
+        </div>
+
+        <% if (!coupons || coupons.length === 0) { %>
+          <div class="text-center py-5">
+            <i class="fas fa-ticket-alt fa-3x text-white-50 mb-3 d-block"></i>
+            <p class="text-white-50">No coupons available for you right now.</p>
+            <a href="/shop" class="btn btn-outline-danger rounded-0 mt-2">Start Shopping to Unlock Offers</a>
+          </div>
+        <% } else { %>
+          <div class="row g-3" id="couponGrid">
+            <% coupons.forEach(c => { %>
+              <div class="col-12 coupon-item"
+                   data-eligibility="<%= c.eligibility %>"
+                   data-applicable="<%= c.applicable %>">
+                <div class="coupon-card <%= c.applicable ? '' : 'not-applicable' %>">
+                  <div class="row align-items-center g-3">
+
+                    <!-- Left: code + discount -->
+                    <div class="col-auto text-center px-4" style="min-width:130px; border-right:1px dashed #444;">
+                      <div class="coupon-code mb-1"><%= c.code %></div>
+                      <div class="discount-pill"><%= c.discountLabel %></div>
+                    </div>
+
+                    <!-- Middle: details -->
+                    <div class="col">
+                      <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                        <% if (c.eligibility === 'new_user') { %>
+                          <span class="eligibility-badge bg-info text-dark">New User</span>
+                        <% } else if (c.eligibility === 'loyal') { %>
+                          <span class="eligibility-badge bg-warning text-dark">Loyal Customer</span>
+                        <% } else if (c.eligibility === 'bank') { %>
+                          <span class="eligibility-badge bg-primary text-white">Bank Offer</span>
+                        <% } else { %>
+                          <span class="eligibility-badge bg-secondary text-white">All Users</span>
+                        <% } %>
+
+                        <% if (!c.applicable) { %>
+                          <span class="text-warning" style="font-size:.68rem;">
+                            <i class="fas fa-lock me-1"></i>Add $<%= (c.minOrderAmount - 0).toFixed(0) %> min. to apply
+                          </span>
+                        <% } %>
+                      </div>
+
+                      <p class="mb-1 text-white-50" style="font-size:.8rem;"><%= c.description %></p>
+
+                      <div class="d-flex align-items-center gap-3 flex-wrap mt-1">
+                        <span class="text-white-50" style="font-size:.72rem;">
+                          <i class="fas fa-shopping-cart me-1"></i>Min. order $<%= c.minOrderAmount %>
+                        </span>
+                        <% if (c.maxDiscount) { %>
+                          <span class="text-white-50" style="font-size:.72rem;">
+                            <i class="fas fa-hand-holding-usd me-1"></i>Max. discount $<%= c.maxDiscount %>
+                          </span>
+                        <% } %>
+                        <% if (c.categoryId) { %>
+                          <span class="text-info" style="font-size:.72rem;">
+                            <i class="fas fa-tag me-1"></i>Category-specific coupon
+                          </span>
+                          <% if (c.applyScope === 'product') { %>
+                            <span class="text-white-50" style="font-size:.68rem;">
+                              (discount on matching items only)
+                            </span>
+                          <% } %>
+                          <% if (c.minProductQty > 0) { %>
+                            <span class="text-white-50" style="font-size:.68rem;">
+                              <i class="fas fa-box me-1"></i>Min. <%= c.minProductQty %> unit(s) of qualifying product
+                            </span>
+                          <% } %>
+                        <% } %>
+                        <% if (c.expiresAt) { %>
+                          <span class="expires-label">
+                            <i class="fas fa-clock me-1 text-warning"></i>
+                            Expires <%= new Date(c.expiresAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' }) %>
+                          </span>
+                        <% } else { %>
+                          <span class="expires-label"><i class="fas fa-infinity me-1"></i>No expiry</span>
+                        <% } %>
+                      </div>
+                    </div>
+
+                    <!-- Right: actions -->
+                    <div class="col-auto text-end d-flex flex-column gap-2 align-items-end">
+                      <button class="copy-btn" onclick="copyCoupon('<%= c.code %>', this)">
+                        <i class="fas fa-copy me-1"></i>Copy
+                      </button>
+                      <% if (c.applicable) { %>
+                        <a href="/checkout" class="btn btn-outline-danger rounded-0 btn-sm px-3">
+                          Use Now
+                        </a>
+                        <% if (c.saving > 0) { %>
+                          <span class="saving-label">Save $<%= c.saving.toFixed(2) %></span>
+                        <% } %>
+                      <% } %>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+
+      </div>
+    </div>
+  </div>
+
+  <%- include('../partials/footer') %>
+
+  <script>
+  function copyCoupon(code, btn) {
+    navigator.clipboard.writeText(code).then(() => {
+      const orig = btn.innerHTML;
+      btn.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+      btn.style.color = '#28a745';
+      btn.style.borderColor = '#28a745';
+      setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; btn.style.borderColor = ''; }, 2000);
+    });
+  }
+
+  function filterCoupons(type, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    document.querySelectorAll('.coupon-item').forEach(item => {
+      const elig       = item.dataset.eligibility;
+      const applicable = item.dataset.applicable === 'true';
+
+      let show = false;
+      if (type === 'all')        show = true;
+      else if (type === 'applicable') show = applicable;
+      else                       show = elig === type;
+
+      item.style.display = show ? '' : 'none';
+    });
+  }
+  </script>
+</body>
+</html>

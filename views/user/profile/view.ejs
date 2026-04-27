@@ -95,11 +95,72 @@
                             </div>
                         </div>
 
+                        <!-- REFERRAL CODE CARD -->
+                        <div class="section-card p-4 bg-dark border border-secondary mb-4"
+                             style="border-top:3px solid #FFD700;">
+                            <div class="section-title text-uppercase fw-bold mb-3 border-start border-4 ps-3"
+                                 style="border-color:#FFD700 !important; color:#FFD700;">
+                                <i class="fas fa-ticket-alt me-2"></i>Your Referral Code
+                            </div>
+                            <p class="text-white-50 small mb-3">
+                                Share this code with friends. When they sign up using it, you receive
+                                <strong class="text-warning">$20</strong> in your wallet automatically.
+                            </p>
+                            <div class="d-flex align-items-center gap-3 flex-wrap">
+                                <div class="px-4 py-2 fw-bold"
+                                     style="background:#111; border:2px dashed #FFD700; color:#FFD700; font-family:monospace; font-size:1.4rem; letter-spacing:4px;">
+                                    <%= user.referralCode || 'Not assigned yet' %>
+                                </div>
+                                <% if (user.referralCode) { %>
+                                    <button type="button"
+                                        class="btn btn-outline-warning rounded-0 fw-semibold px-3"
+                                        onclick="copyReferralCode('<%= user.referralCode %>')"
+                                        id="copyBtn">
+                                        <i class="fas fa-copy me-2"></i>Copy Code
+                                    </button>
+                                    <button type="button"
+                                        class="btn rounded-0 fw-semibold px-3"
+                                        style="background:#FFD700; color:#000; border:none;"
+                                        onclick="shareReferralLink('<%= user.referralCode %>')">
+                                        <i class="fas fa-share-alt me-2"></i>Share Link
+                                    </button>
+                                <% } %>
+                            </div>
+                            <% if (user.referredBy) { %>
+                                <p class="text-white-50 small mt-3 mb-0">
+                                    <i class="fas fa-user-friends me-1 text-warning"></i>
+                                    You joined using referral code <code class="text-warning"><%= user.referredBy %></code>
+                                </p>
+                            <% } %>
+                        </div>
+
                         <div class="d-flex gap-3">
                             <a href="/profile/edit" class="btn btn-danger rounded-0 fw-bold px-4">EDIT PROFILE</a>
-                            <!-- Fixed: was /addresses, now correctly /profile/address -->
                             <a href="/profile/address" class="btn btn-outline-warning rounded-0 fw-bold px-4">MANAGE ADDRESSES</a>
                         </div>
+
+<script>
+function copyReferralCode(code) {
+    navigator.clipboard.writeText(code).then(() => {
+        const btn = document.getElementById('copyBtn');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check me-2"></i>Copied!';
+        btn.classList.replace('btn-outline-warning', 'btn-warning');
+        setTimeout(() => {
+            btn.innerHTML = orig;
+            btn.classList.replace('btn-warning', 'btn-outline-warning');
+        }, 2000);
+    });
+}
+function shareReferralLink(code) {
+    const url = `${window.location.origin}/signup?ref=${code}`;
+    if (navigator.share) {
+        navigator.share({ title: 'Join Comizon!', text: 'Use my referral code to sign up and I get $20!', url });
+    } else {
+        navigator.clipboard.writeText(url).then(() => alert('Referral link copied to clipboard!'));
+    }
+}
+</script>
                     </div>
                 </div>
             </div>
