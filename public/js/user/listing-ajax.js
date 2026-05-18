@@ -80,11 +80,11 @@
             </div>
             <div class="d-flex justify-content-between align-items-center mt-3">
               <h4 class="text-white mb-0">$${Number(p.price).toFixed(2)}</h4>
-              <form action="/cart/add/${p._id}" method="POST" onclick="event.stopPropagation()">
-                <button type="submit" class="btn btn-outline-danger btn-sm rounded-0">
-                  <i class="fas fa-cart-plus"></i> Add
-                </button>
-              </form>
+              <button class="btn btn-outline-danger btn-sm rounded-0 add-to-cart-btn"
+                      data-product-id="${p._id}"
+                      onclick="event.stopPropagation(); addToCartAjax(this)">
+                <i class="fas fa-cart-plus"></i> Add
+              </button>
             </div>
           </div>
         </div>
@@ -286,10 +286,135 @@
   });
 
 
+  // ── Add-to-wishlist AJAX ────────────────────────────────────────────────────
+  window.addToWishlistAjax = function (form, productId) {
+    var btn = form.querySelector('button');
+    var icon = btn ? btn.querySelector('i') : null;
+    if (btn) btn.disabled = true;
+
+    fetch('/wishlist/add/' + productId, {
+      method      : 'POST',
+      headers     : { 'X-Requested-With': 'XMLHttpRequest' },
+      credentials : 'same-origin',
+    })
+      .then(function (r) {
+        if (r.redirected && r.url.includes('login')) {
+          window.location.href = '/login';
+          return;
+        }
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data) return;
+        if (!data.ok) {
+          showListingToast('danger', data.message || 'Could not update wishlist.');
+          if (btn) btn.disabled = false;
+          return;
+        }
+
+        // Toggle heart icon
+        if (icon) {
+          icon.classList.toggle('far', !data.wishlisted);
+          icon.classList.toggle('fas', data.wishlisted);
+        }
+
+        // Update header badge
+        var badge = document.getElementById('wishlist-count');
+        if (data.count > 0) {
+          if (badge) {
+            badge.textContent = data.count;
+          } else {
+            // badge didn't exist (was 0), create it
+            var anchor = document.getElementById('wishlist-btn');
+            if (anchor) {
+              var newBadge = document.createElement('span');
+              newBadge.id = 'wishlist-count';
+              newBadge.className = 'position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger';
+              newBadge.textContent = data.count;
+              anchor.appendChild(newBadge);
+            }
+          }
+        } else {
+          if (badge) badge.remove();
+        }
+
+        showListingToast('success', data.wishlisted ? 'Added to wishlist!' : 'Removed from wishlist.');
+        if (btn) btn.disabled = false;
+      })
+      .catch(function (err) {
+        console.error('addToWishlist error', err);
+        showListingToast('danger', 'Network error. Please try again.');
+        if (btn) btn.disabled = false;
+      });
+  };
+
+
+  // ── Add-to-cart AJAX ────────────────────────────────────────────────────────
+  window.addToCartAjax = function (btn) {
+    const productId = btn.getAttribute('data-product-id');
+    if (!productId) return;
+
+    btn.disabled = true;
+    const original = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+    fetch('/cart/add/' + productId, {
+      method      : 'POST',
+      headers     : { 'X-Requested-With': 'XMLHttpRequest' },
+      credentials : 'same-origin',
+    })
+      .then(function (r) {
+        // Server redirects (302) — fetch follows them; check final URL
+        if (r.redirected && r.url.includes('login')) {
+          window.location.href = '/login';
+          return;
+        }
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data) return; // login redirect already handled
+        if (!data.ok) {
+          // Show error toast / alert under the button
+          btn.innerHTML = '<i class="fas fa-times"></i> ' + (data.message || 'Cannot add');
+          btn.classList.replace('btn-outline-danger', 'btn-danger');
+          setTimeout(function () {
+            btn.innerHTML = original;
+            btn.classList.replace('btn-danger', 'btn-outline-danger');
+            btn.disabled = false;
+          }, 2000);
+          return;
+        }
+
+        // Show quick success feedback
+        btn.innerHTML = '<i class="fas fa-check"></i> Added';
+        btn.classList.replace('btn-outline-danger', 'btn-success');
+
+        // Update header cart count — only for brand-new cart rows, not quantity bumps
+        if (data.isNew) {
+          const badge = document.querySelector('.cart-count-badge');
+          if (badge) {
+            badge.classList.remove('d-none');
+            const n = parseInt(badge.textContent || '0', 10);
+            badge.textContent = n + 1;
+          }
+        }
+
+        setTimeout(function () {
+          btn.innerHTML = original;
+          btn.classList.replace('btn-success', 'btn-outline-danger');
+          btn.disabled = false;
+        }, 1500);
+      })
+      .catch(function (err) {
+        console.error('addToCart error', err);
+        btn.innerHTML = original;
+        btn.disabled = false;
+      });
+  };
+
   document.addEventListener('DOMContentLoaded', function () {
     gridEl           = document.getElementById('product-grid');
     paginationWrapEl = document.getElementById('pagination-wrap');
-
 
     if (window.LISTING_STATE) Object.assign(state, window.LISTING_STATE);
 
@@ -299,6 +424,32 @@
     bindPriceForm();
     bindSortSelect();
     bindPagination();
+
+    // Handle server-rendered add-to-cart forms
+    document.addEventListener('submit', function (e) {
+      const form = e.target.closest('form[action^="/cart/add/"]');
+      if (!form) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const match = form.action.match(/\/cart\/add\/([^?#]+)/);
+      if (!match) return;
+      const productId = match[1];
+      const btn = form.querySelector('button[type="submit"]');
+      if (!btn) return;
+      btn.setAttribute('data-product-id', productId);
+      addToCartAjax(btn);
+    }, true);
+
+    // Handle wishlist forms via AJAX
+    document.addEventListener('submit', function (e) {
+      const form = e.target.closest('form[action^="/wishlist/add/"]');
+      if (!form) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const match = form.action.match(/\/wishlist\/add\/([^?#]+)/);
+      if (!match) return;
+      addToWishlistAjax(form, match[1]);
+    }, true);
   });
 
 }());

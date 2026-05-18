@@ -372,7 +372,7 @@ If this sounds like you — Premium was designed for you.
         rzp.open();
 
       } catch (err) {
-        alert('Error: ' + err.message);
+        showComizonToast('Error: ' + err.message, 'danger');
         btn.disabled = false;
         btn.innerHTML = btn.dataset.originalLabel || 'CHOOSE PLAN';
       }
@@ -384,6 +384,29 @@ If this sounds like you — Premium was designed for you.
 
 
 <%- include('../partials/footer') %>
-
+<script>
+function showComizonToast(msg, type = 'danger') {
+        const colors = { danger: '#E63946', success: '#28a745', warning: '#FFD700' };
+        const t = document.createElement('div');
+        t.style.cssText = `
+          position:fixed;top:80px;right:20px;z-index:9999;min-width:280px;
+          background:#1A1A1A;border-left:4px solid ${colors[type] || colors.danger};
+          color:#fff;padding:14px 18px;font-family:'Inter',sans-serif;
+          font-size:.9rem;box-shadow:0 4px 20px rgba(0,0,0,.6);
+          display:flex;align-items:center;gap:10px;animation:slideIn .3s ease;
+        `;
+        t.innerHTML = `<span style="flex:1">${msg}</span>
+          <button onclick="this.parentElement.remove()" style="background:none;border:none;color:#aaa;font-size:1.1rem;cursor:pointer;line-height:1">×</button>`;
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 5000);
+      }
+      if (!document.getElementById('comizon-toast-anim')) {
+        const s = document.createElement('style');
+        s.id = 'comizon-toast-anim';
+        s.textContent = '@keyframes slideIn{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}';
+        document.head.appendChild(s);
+      }
+      </script>
 </body>
+
 </html>

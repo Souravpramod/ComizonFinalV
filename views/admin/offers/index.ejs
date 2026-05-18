@@ -24,7 +24,7 @@
       <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h4 class="mb-0" style="color:var(--admin-gold);">Offer Management</h4>
-          <p class="text-white small mb-0">Product, Category & Referral offers. Best offer is auto-applied.</p>
+          <p class="text-white small mb-0">Product, Category . Best offer is auto-applied.</p>
         </div>
         <button class="btn btn-warning btn-sm fw-bold rounded-0" data-bs-toggle="modal" data-bs-target="#createOfferModal">
           <i class="fas fa-plus me-1"></i> New Offer
@@ -39,10 +39,10 @@
         </div>
         <div class="col-md-2">
           <select name="offerType" class="form-select form-select-sm bg-dark text-light border-secondary rounded-0">
-            <option value="">All Types</option>
+            <option value="all">All Types</option>
             <option value="product"  <%= offerType==='product'  ?'selected':'' %>>Product</option>
             <option value="category" <%= offerType==='category' ?'selected':'' %>>Category</option>
-            <option value="referral" <%= offerType==='referral' ?'selected':'' %>>Referral</option>
+            
           </select>
         </div>
         <div class="col-md-2">
@@ -129,9 +129,7 @@
                           data-productnames="<%= (o.productIds||[]).map(p=>p.productName).join('||') %>">
                           <i class="fas fa-pen"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-danger rounded-0 delete-offer-btn" data-id="<%= o._id %>" title="Delete">
-                          <i class="fas fa-trash"></i>
-                        </button>
+                        
                       </div>
                     </td>
                   </tr>
@@ -191,7 +189,7 @@
                 <select name="offerType" id="offerTypeSelect" class="form-select bg-dark text-light border-secondary rounded-0">
                   <option value="product">Product Offer</option>
                   <option value="category">Category Offer</option>
-                  <option value="referral">Referral Offer</option>
+                  
                 </select>
               </div>
 
@@ -335,7 +333,7 @@
                 <select name="offerType" id="editOfferTypeSelect" class="form-select bg-dark text-light border-secondary rounded-0">
                   <option value="product">Product Offer</option>
                   <option value="category">Category Offer</option>
-                  <option value="referral">Referral Offer</option>
+                  
                 </select>
               </div>
  
@@ -636,11 +634,11 @@ function removeEditProduct(id) {
 document.getElementById('editOfferForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const form      = e.target;
-  const errorBox  = document.getElementById('offerModalError');
-  const errorText = document.getElementById('offerModalErrorText');
-  const submitBtn = document.getElementById('offerSubmitBtn');
-  const btnText   = document.getElementById('offerBtnText');
-  const btnSpin   = document.getElementById('offerBtnSpinner');
+  const errorBox  = document.getElementById('editOfferModalError');
+  const errorText = document.getElementById('editOfferModalErrorText');
+  const submitBtn = document.getElementById('editOfferSubmitBtn');
+  const btnText   = document.getElementById('editOfferBtnText');
+  const btnSpin   = document.getElementById('editOfferBtnSpinner');
 
   // Trigger all live validations before submitting
   form.querySelectorAll('input[name], select[name]').forEach(el => el.dispatchEvent(new Event('blur')));
@@ -905,11 +903,11 @@ function hasLiveErrors(formEl) {
 document.getElementById('offerCreateForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const form      = e.target;
-  const errorBox  = document.getElementById('editOfferModalError');
-  const errorText = document.getElementById('editOfferModalErrorText');
-  const submitBtn = document.getElementById('editOfferSubmitBtn');
-  const btnText   = document.getElementById('editOfferBtnText');
-  const btnSpin   = document.getElementById('editOfferBtnSpinner');
+  const errorBox  = document.getElementById('offerModalError');
+  const errorText = document.getElementById('offerModalErrorText');
+  const submitBtn = document.getElementById('offerSubmitBtn');
+  const btnText   = document.getElementById('offerBtnText');
+  const btnSpin   = document.getElementById('offerBtnSpinner');
 
   form.querySelectorAll('input[name], select[name]').forEach(el => el.dispatchEvent(new Event('blur')));
   if (hasLiveErrors(form)) return;

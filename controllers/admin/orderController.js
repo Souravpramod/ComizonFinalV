@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import Order   from '../../models/Order.js';
 import Product from '../../models/Product.js';
 import { refundToWallet } from '../user/walletController.js';
-
+import Coupon   from '../../models/Coupon.js';
 const ITEMS_PER_PAGE = 10;
 
 
@@ -397,7 +397,7 @@ export const resolveCancel = async (req, res) => {
         await order.save();
 
         const msg = shouldRefund
-            ? `Cancellation confirmed. ₹${refundAmount.toFixed(2)} refunded to customer wallet.${shippingRefund > 0 ? ' (includes shipping fee)' : ''}`
+            ? `Cancellation confirmed. $${refundAmount.toFixed(2)} refunded to customer wallet.${shippingRefund > 0 ? ' (includes shipping fee)' : ''}`
             : 'Cancellation confirmed. No refund (COD order).';
 
         return res.json({ ok: true, message: msg });
@@ -424,109 +424,120 @@ export const resolveReturn = async (req, res) => {
             return res.status(400).json({ ok: false, message: 'Item is not in return_requested state' });
 
         if (action === 'approve') {
-
+            // 1. RESTORE STOCK
             await Product.findByIdAndUpdate(item.productId, {
-                $inc:      { stockQuantity: item.quantity },
+                $inc: { stockQuantity: item.quantity },
                 outOfstock: false,
             });
 
-            item.itemStatus      = 'returned';
-            item.attention       = 0;
+            const paidMethods = ['online', 'wallet'];
+
+           
+            const applicableItems = order.items.filter(i => i.itemStatus !== 'cancelled').length;
+            const totalCouponDiscount = order.discount || 0;
+
+            // This is the share of the coupon that was applied to THIS item
+            const perItemCouponShare = applicableItems > 0
+                ? +(totalCouponDiscount / applicableItems).toFixed(2)
+                : 0;
+
+           
+            const refundAmount = +(item.lineTotal - perItemCouponShare).toFixed(2);
+
+            // Check if this is the last "active" item to decide on shipping refund
+            const otherItems = order.items.filter(i => i._id.toString() !== itemId);
+            const othersAllTerminal = otherItems.length === 0 || otherItems.every(i => 
+                ['cancelled', 'returned'].includes(i.itemStatus)
+            );
+
+            const shippingRefund = othersAllTerminal ? (order.shippingFee || 0) : 0;
+            const totalRefund = +Math.max(0, refundAmount + shippingRefund).toFixed(2);
+
+            // 3. UPDATE ITEM STATE
+            item.itemStatus = 'returned';
+            item.attention = 0;
             item.flaggedresponse = 1;
             item.unitStatuses.forEach(u => { u.status = 'returned'; });
+            
+            // Set lineTotal to 0 so the order subtotal recalculation is correct
+            item.lineTotal = 0; 
 
-           
-            const allStatuses  = order.items.map(i => i.itemStatus);
-            const allDone      = allStatuses.every(s => ['returned', 'cancelled'].includes(s));
-            const allCancelled = allStatuses.every(s => s === 'cancelled');
-
-            if (allDone) {
-                order.status = allCancelled ? 'cancelled' : 'returned';
+            // 4. RECALCULATE ORDER TOTALS
+            const terminalStatuses = ['cancelled', 'returned'];
+            const activeItems = order.items.filter(i => !terminalStatuses.includes(i.itemStatus));
+            
+            if (activeItems.length === 0) {
+                order.subtotal = 0;
+                order.shippingFee = 0;
+                order.total = 0;
+            } else {
+                const newSubtotal = +activeItems.reduce((s, i) => s + i.lineTotal, 0).toFixed(2);
+                // Replace 500 with your actual Free Shipping Threshold variable if different
+                const newShipping = newSubtotal >= 500 ? 0 : (order.shippingFee > 0 ? order.shippingFee : 0);
+                
+                order.subtotal = newSubtotal;
+                order.shippingFee = newShipping;
+                order.total = +(newSubtotal + newShipping).toFixed(2);
             }
 
-            const paidMethods       = ['online', 'wallet'];
-            const otherItems        = order.items.filter(i => i._id.toString() !== itemId);
-            const othersAllTerminal = otherItems.every(i => ['cancelled','returned'].includes(i.itemStatus));
-            const shippingRefund    = othersAllTerminal ? (order.shippingFee || 0) : 0;
-            const refundAmount      = +(item.lineTotal + shippingRefund).toFixed(2);
-            const shouldRefund      = refundAmount > 0 && paidMethods.includes(order.paymentMethod);
+            // 5. UPDATE OVERALL ORDER STATUS
+            const allStatuses = order.items.map(i => i.itemStatus);
+            const allCancelled = allStatuses.every(s => s === 'cancelled');
+            const allTerminal = allStatuses.every(s => terminalStatuses.includes(s));
 
-            order.paymentStatus = 'refunded';
-
-           
-            const allStatusesNow  = order.items.map(i => i.itemStatus);
-            const allTerminalNow  = allStatusesNow.every(s => ['cancelled', 'returned'].includes(s));
-
-            if (allTerminalNow) {
-                
-                order.subtotal    = 0;
-                order.shippingFee = 0;
-                order.total       = 0;
+            if (allCancelled) {
+                order.status = 'cancelled';
+            } else if (allTerminal) {
+                order.status = 'returned';
             } else {
-               
-                const terminalStatuses = ['cancelled', 'returned'];
-                const activeItems  = order.items.filter(i => !terminalStatuses.includes(i.itemStatus));
-                const newSubtotal  = +activeItems.reduce((s, i) => s + i.lineTotal, 0).toFixed(2);
-                const newShipping  = newSubtotal >= 500 ? 0 : (order.shippingFee > 0 ? order.shippingFee : 0);
-                order.subtotal     = newSubtotal;
-                order.shippingFee  = newShipping;
-                order.total        = +(newSubtotal + newShipping).toFixed(2);
+                const hasDelivered = activeItems.some(i => i.itemStatus === 'delivered');
+                order.status = hasDelivered ? 'delivered' : 'processing';
+            }
+
+            if (allTerminal && paidMethods.includes(order.paymentMethod)) {
+                order.paymentStatus = 'refunded';
             }
 
             await order.save();
 
+            // 6. WALLET REFUND
+            const shouldRefund = totalRefund > 0 && paidMethods.includes(order.paymentMethod);
             if (shouldRefund) {
                 await refundToWallet(
                     order.userId,
-                    refundAmount,
+                    totalRefund,
                     order._id,
                     shippingRefund > 0
-                        ? `Refund for returned item "${item.productName}" + shipping fee (Order #${order.orderId})`
-                        : `Refund for returned item "${item.productName}" (Order #${order.orderId})`
+                        ? `Refund: "${item.productName}" + shipping `
+                        : `Refund: "${item.productName}" `
                 );
             }
 
-            const msg = shouldRefund
-                ? `Return approved. Stock restored and ₹${refundAmount.toFixed(2)} refunded to wallet.${shippingRefund > 0 ? ' (includes shipping fee)' : ''}`
-                : 'Return approved. Stock restored. No wallet refund (COD order).';
-
-            return res.json({ ok: true, message: msg });
+            return res.json({ 
+                ok: true, 
+                message: `Approved. Refunded: $${totalRefund.toFixed(2)} (Offer: $${(refundAmount + perItemCouponShare).toFixed(2)} - Coupon: $${perItemCouponShare})` 
+            });
 
         } else if (action === 'reject') {
             const deniedReason = (req.body.deniedReason || '').trim();
-            if (!deniedReason) {
-                return res.status(400).json({ ok: false, message: 'A reason is required when rejecting a return.' });
-            }
+            if (!deniedReason) return res.status(400).json({ ok: false, message: 'Reason required.' });
 
-            item.itemStatus         = 'delivered';
-            item.returnReason       = '';
+            item.itemStatus = 'delivered';
             item.returnDeniedReason = deniedReason;
-            item.attention          = 0;
-            item.flaggedresponse    = 1;
+            item.attention = 0;
+            item.flaggedresponse = 1;
             item.unitStatuses.forEach(u => { u.status = 'delivered'; });
 
-            const allStatuses    = order.items.map(i => i.itemStatus);
-            const uniqueStatuses = [...new Set(allStatuses)];
-            if (uniqueStatuses.length === 1) {
-                order.status = uniqueStatuses[0];
-            } else if (allStatuses.every(s => ['returned', 'cancelled', 'delivered'].includes(s))) {
+            const allStatuses = order.items.map(i => i.itemStatus);
+            if (allStatuses.every(s => ['returned', 'cancelled', 'delivered'].includes(s))) {
                 order.status = allStatuses.includes('returned') ? 'returned' : 'delivered';
-            } else {
-                order.status = 'processing';
             }
 
-            const hasReturnPending = allStatuses.some(s => ['return_requested', 'returned'].includes(s));
-            if (!hasReturnPending) order.paymentStatus = 'paid';
-
             await order.save();
-            return res.json({ ok: true, message: 'Return rejected. Item restored to delivered.' });
-
-        } else {
-            return res.status(400).json({ ok: false, message: 'Invalid action' });
+            return res.json({ ok: true, message: 'Return rejected.' });
         }
-
     } catch (err) {
-        console.error('resolveReturn error:', err.message);
+        console.error('resolveReturn error:', err);
         return res.status(500).json({ ok: false, message: err.message });
     }
 };

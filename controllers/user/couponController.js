@@ -224,6 +224,7 @@ export const applyCoupon = async (req, res) => {
             discount = Math.min(discount, baseAmount);
         }
         discount = +discount.toFixed(2);
+        
 
         return res.json({
             success:      true,

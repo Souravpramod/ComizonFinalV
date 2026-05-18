@@ -268,7 +268,7 @@
           const _dtype = locals.offerDiscountType  ?? null;
           const _dval  = locals.offerDiscountValue ?? 0;
           const _discBadge = _dtype === 'flat'
-              ? `₹${_dval} OFF`
+              ? `$${_dval} OFF`
               : (_dtype === 'percent' ? `${_dval}% OFF` : null);
         %>
         <div class="mb-4" data-product-id="<%= p._id %>">

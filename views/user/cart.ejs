@@ -105,6 +105,7 @@
         %>
         <p class="text-white-50 mt-2 ps-3"><%= itemCount %> item<%= itemCount !== 1 ? 's' : '' %> in your cart</p>
     </header>
+                            
 
    
     <!-- Blocked Products Warning Banner -->
@@ -631,7 +632,7 @@ function recalcSummary() {
         const qty   = parseInt(input.value, 10) || 0;
         const price = parseFloat(input.dataset.price || 0);
         subtotal  += qty * price;
-        itemCount += qty;
+        itemCount += 1;   // count the row (product), not the quantity
     });
 
     const shipping = subtotal === 0 ? 0 : subtotal >= 500 ? 0 : 5;

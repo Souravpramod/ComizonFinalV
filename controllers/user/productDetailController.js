@@ -24,7 +24,7 @@ function mapRec(p) {
         effectivePrice:     p.offerResult ? p.offerResult.effectivePrice : p.price,
         offerBadge:         p.offerResult
                               ? (p.offerResult.discountType === 'flat'
-                                  ? `₹${p.offerResult.discountValue} OFF`
+                                  ? `$${p.offerResult.discountValue} OFF`
                                   : `${p.offerResult.discountValue}% OFF`)
                               : null,
         badgeColorListing:  p.offerResult?.badgeColorListing || '#E63946',

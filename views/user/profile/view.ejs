@@ -87,9 +87,10 @@
                                         value="<%= locals.user ? user.username : '' %>" readonly>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label text-muted small fw-bold">EMAIL ADDRESS <i class="fas fa-lock ms-1"></i></label>
+                                    <label class="form-label text-warning small fw-bold">EMAIL ADDRESS <i class="fas fa-lock ms-1"></i></label>
                                     <input type="email"
-                                        class="form-control bg-black border-secondary text-muted rounded-0"
+                                        class="form-control rounded-0 border-secondary"
+                                        style="background-color:#1a1a1a; color:#ffffff;"
                                         value="<%= locals.user ? user.email : '' %>" readonly>
                                 </div>
                             </div>
@@ -134,6 +135,11 @@
                             <% } %>
                         </div>
 
+                        <% if (locals.query && query.emailUpdated) { %>
+                          <div class="alert alert-success rounded-0 small mb-3">
+                            <i class="fas fa-check-circle me-2"></i>Your email address has been updated successfully.
+          </div>
+                        <% } %>
                         <div class="d-flex gap-3">
                             <a href="/profile/edit" class="btn btn-danger rounded-0 fw-bold px-4">EDIT PROFILE</a>
                             <a href="/profile/address" class="btn btn-outline-warning rounded-0 fw-bold px-4">MANAGE ADDRESSES</a>

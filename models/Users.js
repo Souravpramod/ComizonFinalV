@@ -20,6 +20,7 @@ const userSchema = new mongoose.Schema({
     lastName:     { type: String, default: '' },
     username:     { type: String },
     email:        { type: String, required: true, unique: true },
+    profilePhoto: { type: String, default: null },
     passwordHash: { type: String },   
     gender:       {type:String},
     googleId:     { type: String },   

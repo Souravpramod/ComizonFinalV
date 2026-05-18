@@ -15,7 +15,8 @@ import {
 } from '../../controllers/user/authController.js';
 import {
     getProfile, getEditProfile, postEditProfile,
-    getChangePassword, postChangePassword
+    getChangePassword, postChangePassword,postRequestEmailChange, getVerifyEmailOtp,
+    postVerifyEmailOtp, postResendEmailOtp,postUploadProfilePhoto,
 } from '../../controllers/user/profileController.js';
 import {
     getAddresses, postAddAddress, postEditAddress, postDeleteAddress, postDefaultAddress, postAddAddressAjax, validatePincodeApi,
@@ -24,7 +25,7 @@ import {
     getWishlist, addToWishlist, removeFromWishlist, moveToCart,moveAllToCart,getWishlistStockCheck
 } from '../../controllers/user/wishlistController.js';
 import {
-    getCart, addToCart, updateCartItem, removeFromCart,getCartStock,getCartOfferPrices
+    getCart, addToCart, updateCartItem, removeFromCart,getCartStock,getCartOfferPrices,
 } from '../../controllers/user/cartController.js';
 
 import {
@@ -131,6 +132,7 @@ router.get('/cart/offer-prices',          requireUser, getCartOfferPrices);
 
 
 
+
 // ── Checkout ──────────────────────────────────────────────────────────────────
 router.get('/checkout',                   requireUser, getCheckout);
 router.post('/checkout/place-order',      requireUser, placeOrder);
@@ -188,6 +190,11 @@ router.get('/profile/edit',             requireUser, getEditProfile);
 router.post('/profile/edit',            requireUser, postEditProfile);
 router.get('/profile/change-password',  requireUser, getChangePassword);
 router.post('/profile/change-password', requireUser, postChangePassword);
+router.post('/profile/upload-photo',            requireUser, postUploadProfilePhoto);
+router.post('/profile/request-email-change',    requireUser, postRequestEmailChange);
+router.get('/profile/verify-email-otp',         requireUser, getVerifyEmailOtp);
+router.post('/profile/verify-email-otp',        requireUser, postVerifyEmailOtp);
+router.post('/profile/resend-email-otp',        requireUser, postResendEmailOtp);
 
 router.get('/profile/address',               requireUser, getAddresses);
 router.post('/profile/address/add',          requireUser, postAddAddress);

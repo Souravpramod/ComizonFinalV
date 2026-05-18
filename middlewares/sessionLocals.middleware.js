@@ -17,7 +17,7 @@ export const injectSessionLocals = async (req, res, next) => {
             ]);
 
             res.locals.wishlistCount = wishlist?.products?.length || 0;
-            res.locals.cartCount     = cart?.items?.reduce((n, i) => n + (i.quantity || 1), 0) || 0;
+            res.locals.cartCount = cart?.items?.length || 0;
 
         } catch (err) {
             console.error('sessionLocals count error:', err.message);

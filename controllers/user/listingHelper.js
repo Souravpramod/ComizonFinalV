@@ -88,7 +88,7 @@ export async function renderListingPage(req, res, pageName, viewName, heroImage)
                 effectivePrice:    offerResult?.effectivePrice    ?? p.price,
                 offerBadge:        offerResult
                                     ? (offerResult.discountType === 'flat'
-                                        ? `₹${offerResult.discountValue} OFF`
+                                        ? `$${offerResult.discountValue} OFF`
                                         : `${offerResult.discountValue}% OFF`)
                                     : null,
                 badgeColorListing: offerResult?.badgeColorListing ?? '#E63946',

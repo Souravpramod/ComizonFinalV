@@ -1,0 +1,115 @@
+<%- include('../../partials/user-head', { title: 'Verify New Email' }) %>
+<style>
+  body { background: linear-gradient(135deg,#1a1a1a 0%,#000 100%); min-height:100vh; display:flex; align-items:center; justify-content:center; }
+  .otp-container { background:#121212; border:1px solid #333; border-top:4px solid #FFD700; width:100%; max-width:500px; padding:3rem 2.5rem; box-shadow:0 10px 40px rgba(0,0,0,0.7); }
+  .otp-icon { width:80px; height:80px; background:linear-gradient(135deg,#FFD700 0%,#e6b800 100%); border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 2rem; font-size:2.5rem; color:#000; }
+  .otp-inputs { display:flex; gap:1rem; justify-content:center; margin:2rem 0; }
+  .otp-input { width:60px; height:60px; text-align:center; font-size:1.5rem; font-weight:700; background:#1E1E1E; border:2px solid #444; color:white; border-radius:0; transition:all 0.3s; }
+  .otp-input:focus { background:#1E1E1E; border-color:#FFD700; color:white; box-shadow:0 0 0 0.2rem rgba(255,215,0,0.2); outline:none; }
+  .email-badge { background:rgba(255,215,0,0.1); border:1px solid #FFD700; color:#FFD700; padding:0.5rem 1rem; display:inline-block; font-weight:600; word-break:break-all; }
+  .timer { color:#FFD700; font-weight:700; min-width:50px; display:inline-block; }
+  #resendBtn:disabled { opacity:0.5; cursor:not-allowed; }
+</style>
+
+<body class="bg-black text-light">
+  <div class="otp-container">
+    <div class="text-center mb-4">
+      <h2 class="logo-text mb-1">COMIZON<span class="text-danger">.</span></h2>
+    </div>
+    <div class="otp-icon"><i class="fas fa-envelope-open-text"></i></div>
+    <div class="text-center mb-3">
+      <h4 class="fw-bold text-uppercase">Verify New Email</h4>
+      <p class="text-muted mb-2">We've sent a verification code to your <strong class="text-warning">new</strong> email</p>
+      <div class="email-badge"><i class="fas fa-envelope me-2"></i><%= locals.newEmail || 'your new email' %></div>
+      <p class="text-muted small mt-3">Enter the 6-digit code to confirm the email change</p>
+    </div>
+
+    <% if (locals.error)   { %><div class="alert alert-danger  rounded-0 small py-2 mb-3"><%= error   %></div><% } %>
+    <% if (locals.message) { %><div class="alert alert-success rounded-0 small py-2 mb-3"><%= message %></div><% } %>
+
+    <form action="/profile/verify-email-otp" method="POST" id="otpForm">
+      <div class="otp-inputs">
+        <input type="text" name="otp[]" class="otp-input" maxlength="1" autofocus inputmode="numeric">
+        <input type="text" name="otp[]" class="otp-input" maxlength="1" inputmode="numeric">
+        <input type="text" name="otp[]" class="otp-input" maxlength="1" inputmode="numeric">
+        <input type="text" name="otp[]" class="otp-input" maxlength="1" inputmode="numeric">
+        <input type="text" name="otp[]" class="otp-input" maxlength="1" inputmode="numeric">
+        <input type="text" name="otp[]" class="otp-input" maxlength="1" inputmode="numeric">
+      </div>
+      <button type="submit" class="btn w-100 py-3 text-uppercase fw-bold rounded-0"
+              style="background:#FFD700;color:#000;border:none;">
+        <i class="fas fa-check-circle me-2"></i>Confirm Email Change
+      </button>
+    </form>
+
+    <div class="text-center mt-3">
+      <p class="text-muted small mb-2">Didn't receive the code?</p>
+      <form action="/profile/resend-email-otp" method="POST" id="resendForm" style="display:inline;">
+        <button type="submit" class="btn btn-link p-0 text-decoration-none fw-bold"
+                style="color:#FFD700;" id="resendBtn">
+          <i class="fas fa-redo me-1"></i>Resend Code
+        </button>
+      </form>
+      <span class="timer ms-2" id="timerDisplay" style="display:none;"></span>
+    </div>
+
+    <div class="text-center mt-4">
+      <a href="/profile/edit" class="text-muted text-decoration-none small">
+        <i class="fas fa-arrow-left me-1"></i>Cancel email change
+      </a>
+    </div>
+  </div>
+
+  <script>
+    const inputs = document.querySelectorAll('.otp-input');
+
+    document.getElementById('otpForm').addEventListener('submit', function (e) {
+      const filled = [...inputs].every(inp => inp.value.trim() !== '');
+      if (!filled) {
+        e.preventDefault();
+        inputs.forEach(inp => { inp.style.borderColor = inp.value.trim() === '' ? '#FFD700' : '#444'; });
+      }
+    });
+
+    inputs.forEach((input, i) => {
+      input.addEventListener('input', e => {
+        input.style.borderColor = '#444';
+        e.target.value = e.target.value.replace(/\D/g,'');
+        if (e.target.value && i < inputs.length - 1) inputs[i+1].focus();
+      });
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Backspace' && !e.target.value && i > 0) inputs[i-1].focus();
+      });
+      input.addEventListener('paste', e => {
+        e.preventDefault();
+        const data = e.clipboardData.getData('text').replace(/\D/g,'');
+        [...data].forEach((c,j) => { if(inputs[i+j]) inputs[i+j].value = c; });
+        const last = Math.min(i+data.length, inputs.length-1);
+        if (inputs[last]) inputs[last].focus();
+      });
+    });
+
+    const resendBtn    = document.getElementById('resendBtn');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const COOLDOWN_KEY = 'email_otp_resend_deadline';
+    const COOLDOWN_SEC = 60;
+
+    const isFreshOtp = <%= locals.freshOtp === true ? 'true' : 'false' %>;
+    if (isFreshOtp) sessionStorage.setItem(COOLDOWN_KEY, Date.now() + COOLDOWN_SEC * 1000);
+
+    function tick() {
+      const left = Math.max(0, Math.floor((parseInt(sessionStorage.getItem(COOLDOWN_KEY)||0) - Date.now()) / 1000));
+      if (left <= 0) { timerDisplay.style.display='none'; resendBtn.disabled=false; return; }
+      resendBtn.disabled = true;
+      timerDisplay.style.display = 'inline';
+      timerDisplay.textContent = `(${left}s)`;
+      setTimeout(tick, 1000);
+    }
+    tick();
+
+    document.getElementById('resendForm').addEventListener('submit', () => {
+      sessionStorage.setItem(COOLDOWN_KEY, Date.now() + COOLDOWN_SEC * 1000);
+    });
+  </script>
+</body>
+</html>

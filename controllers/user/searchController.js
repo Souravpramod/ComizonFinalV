@@ -121,7 +121,7 @@ const query = {
                 effectivePrice:    offerResult?.effectivePrice    ?? p.price,
                 offerBadge:        offerResult
                                     ? (offerResult.discountType === 'flat'
-                                        ? `₹${offerResult.discountValue} OFF`
+                                        ? `$${offerResult.discountValue} OFF`
                                         : `${offerResult.discountValue}% OFF`)
                                     : null,
                 badgeColorListing: offerResult?.badgeColorListing ?? '#E63946',

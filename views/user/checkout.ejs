@@ -322,46 +322,118 @@
 
             <!-- Available coupons -->
             <% if (availableCoupons && availableCoupons.length > 0) { %>
-              <p class="text-white-50 small mb-2">Available for you:</p>
-              <div class="row g-2">
-                <% availableCoupons.forEach(c => { %>
-                  <div class="col-md-6">
-                    <div class="coupon-card <%= c.applicable ? '' : 'not-applicable' %>"
-                         id="ccard-<%= c.code %>"
-                         onclick="<%= c.applicable ? `tapCoupon('${c.code}')` : '' %>">
-                      <div class="d-flex justify-content-between align-items-start mb-1">
-                        <span class="coupon-badge"><%= c.code %></span>
-                        <span class="text-danger fw-bold small"><%= c.discountLabel %></span>
-                      </div>
-                      <p class="mb-1 text-white-50" style="font-size:.72rem;"><%= c.description %></p>
-                      <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-white-50" style="font-size:.7rem;">
-                          Min. $<%= c.minOrderAmount %>
-                        </span>
-                        <% if (!c.applicable) { %>
-                          <span class="text-warning" style="font-size:.65rem;">
-                            <i class="fas fa-info-circle me-1"></i>Add $<%= (c.minOrderAmount - subtotal).toFixed(2) %> more
-                          </span>
-                        <% } else if (c.eligibility === 'new_user') { %>
-                          <span class="eligibility-badge bg-info text-dark">New User</span>
-                        <% } else if (c.eligibility === 'loyal') { %>
-                          <span class="eligibility-badge bg-warning text-dark">Loyal Customer</span>
-                        <% } else if (c.eligibility === 'bank') { %>
-                          <span class="eligibility-badge bg-primary text-white">Bank Offer</span>
-                        <% } %>
-                      </div>
-                      <% if (c.applicable && c.saving > 0) { %>
-                        <p class="mb-0 text-success mt-1" style="font-size:.7rem;">
-                          <i class="fas fa-check-circle me-1"></i>You save $<%= c.saving.toFixed(2) %>
-                        </p>
-                      <% } %>
-                    </div>
-                  </div>
-                <% }) %>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <p class="text-white-50 small mb-0">Available for you:</p>
+                <span class="text-white-50 small" id="couponPageInfo"></span>
               </div>
+              <div class="row g-2" id="couponGrid"></div>
+              <!-- Pagination controls -->
+              <div class="d-flex justify-content-center align-items-center gap-2 mt-3" id="couponPagination"></div>
             <% } else { %>
               <p class="text-white-50 small">No coupons available right now.</p>
             <% } %>
+
+            <script>
+            (function() {
+              const COUPONS_PER_PAGE = 4;
+              const coupons = <%- JSON.stringify(availableCoupons) %>;
+              const subtotal = <%= subtotal %>;
+              let currentPage = 1;
+              const totalPages = Math.ceil(coupons.length / COUPONS_PER_PAGE);
+
+              function renderCoupons(page) {
+                currentPage = page;
+                const grid = document.getElementById('couponGrid');
+                const info = document.getElementById('couponPageInfo');
+                const start = (page - 1) * COUPONS_PER_PAGE;
+                const slice = coupons.slice(start, start + COUPONS_PER_PAGE);
+
+                grid.innerHTML = slice.map(c => {
+                  const discountLabel = c.discountLabel || '';
+                  const description   = c.description  || '';
+                  const eligBadge = !c.applicable
+                    ? `<span class="text-warning" style="font-size:.65rem;"><i class="fas fa-info-circle me-1"></i>Add $${(c.minOrderAmount - subtotal).toFixed(2)} more</span>`
+                    : c.eligibility === 'new_user'
+                      ? `<span class="eligibility-badge bg-info text-dark">New User</span>`
+                      : c.eligibility === 'loyal'
+                        ? `<span class="eligibility-badge bg-warning text-dark">Loyal Customer</span>`
+                        : c.eligibility === 'bank'
+                          ? `<span class="eligibility-badge bg-primary text-white">Bank Offer</span>`
+                          : '';
+                  const savingLine = c.applicable && c.saving > 0
+                    ? `<p class="mb-0 text-success mt-1" style="font-size:.7rem;"><i class="fas fa-check-circle me-1"></i>You save $${c.saving.toFixed(2)}</p>`
+                    : '';
+                  return `
+                    <div class="col-md-6">
+                      <div class="coupon-card ${c.applicable ? '' : 'not-applicable'}"
+                           id="ccard-${c.code}"
+                           ${c.applicable ? `onclick="tapCoupon('${c.code}')"` : ''}>
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                          <span class="coupon-badge">${c.code}</span>
+                          <span class="text-danger fw-bold small">${discountLabel}</span>
+                        </div>
+                        <p class="mb-1 text-white-50" style="font-size:.72rem;">${description}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                          <span class="text-white-50" style="font-size:.7rem;">Min. $${c.minOrderAmount}</span>
+                          ${eligBadge}
+                        </div>
+                        ${savingLine}
+                      </div>
+                    </div>`;
+                }).join('');
+
+                // Page info
+                const from = start + 1;
+                const to   = Math.min(start + COUPONS_PER_PAGE, coupons.length);
+                info.textContent = `${from}–${to} of ${coupons.length}`;
+
+                renderPagination();
+              }
+
+              function renderPagination() {
+                const nav = document.getElementById('couponPagination');
+                if (totalPages <= 1) { nav.innerHTML = ''; return; }
+
+                let html = `
+                  <button class="btn btn-sm btn-outline-secondary rounded-0 px-2 py-1"
+                          onclick="couponGoTo(${currentPage - 1})"
+                          ${currentPage === 1 ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-left" style="font-size:.7rem;"></i>
+                  </button>`;
+
+                for (let i = 1; i <= totalPages; i++) {
+                  html += `
+                    <button class="btn btn-sm rounded-0 px-2 py-1 ${i === currentPage ? 'btn-danger' : 'btn-outline-secondary'}"
+                            onclick="couponGoTo(${i})" style="font-size:.75rem; min-width:28px;">
+                      ${i}
+                    </button>`;
+                }
+
+                html += `
+                  <button class="btn btn-sm btn-outline-secondary rounded-0 px-2 py-1"
+                          onclick="couponGoTo(${currentPage + 1})"
+                          ${currentPage === totalPages ? 'disabled' : ''}>
+                    <i class="fas fa-chevron-right" style="font-size:.7rem;"></i>
+                  </button>`;
+
+                nav.innerHTML = html;
+              }
+
+              // Global so onclick attrs can reach it
+              window.couponGoTo = function(page) {
+                if (page < 1 || page > totalPages) return;
+                renderCoupons(page);
+              };
+
+              // Re-highlight applied coupon card after page render
+              const _origTapCoupon = window.tapCoupon;
+              window.tapCoupon = function(code) {
+                _origTapCoupon(code);
+              };
+
+              renderCoupons(1);
+            })();
+            </script>
           </div>
 
           <!-- ③ PAYMENT METHOD -->
@@ -531,6 +603,74 @@
             'warning'
           );
         <% }) %>
+      });
+    <% } %>
+
+    <% if (locals.isRetry) { %>
+      window.addEventListener('DOMContentLoaded', async () => {
+        try {
+          
+          const rzpRes = await fetch('/checkout/place-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              paymentMethod: 'online',
+              addressId: '<%= defaultAddress?._id?.toString() || "" %>',
+              couponCode: '<%= locals.retryCouponCode || "" %>',
+            }),
+          });
+          const rzpData = await rzpRes.json();
+          if (!rzpData.pendingOrder) throw new Error(rzpData.message || 'Retry preparation failed');
+
+          const options = {
+            key:         rzpData.key,
+            amount:      rzpData.amount,
+            currency:    rzpData.currency,
+            name:        'Comizon',
+            description: 'Retry Payment',
+            order_id:    rzpData.razorpayOrderId,
+            handler: async function (response) {
+              const verifyRes = await fetch('/checkout/razorpay/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  razorpay_order_id:   response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature:  response.razorpay_signature,
+                  addressId: '<%= defaultAddress?._id?.toString() || "" %>',
+                }),
+              });
+              const verifyJson = await verifyRes.json();
+              if (verifyJson.success) {
+                window.location.href = verifyJson.redirectUrl;
+              } else {
+                showToast('Payment verification failed. Please contact support.');
+              }
+            },
+            prefill: {
+              name:    "<%= user.firstName %>",
+              email:   "<%= user.email %>",
+              contact: "<%= user.phone %>",
+            },
+            theme: { color: '#E63946' },
+            modal: {
+              ondismiss: function () {
+                window.location.href = '/orders';
+              },
+            },
+          };
+
+          const rzp = new Razorpay(options);
+          rzp.on('payment.failed', function (response) {
+            const reason = response.error.description || 'Payment failed';
+            window.location.href = `/checkout/payment-failed?reason=${encodeURIComponent(reason)}`;
+          });
+          rzp.open();
+
+        } catch (err) {
+          console.error('Auto retry error:', err);
+          showToast('Could not initiate payment. Please try again.');
+        }
       });
     <% } %>
 

@@ -44,7 +44,7 @@ export const getCart = async (req, res) => {
                 hasOffer,
                 offerBadge:     hasOffer
                                   ? (offerResult.discountType === 'flat'
-                                      ? `₹${offerResult.discountValue} OFF`
+                                      ? `$${offerResult.discountValue} OFF`
                                       : `${offerResult.discountValue}% OFF`)
                                   : null,
                 badgeColor:     offerResult?.badgeColorDetail || '#E63946',
@@ -67,7 +67,7 @@ export const getCart = async (req, res) => {
             subtotal,
             shipping,
             total,
-            itemCount: cartItems.reduce((n, i) => n + i.quantity, 0),
+            itemCount: cartItems.length,
             success:   req.query.success || null,
             error:     req.query.error   || null,
         });
@@ -104,6 +104,9 @@ export const addToCart = async (req, res) => {
         const product = await Product.findById(productId).lean();
         if (!product)           return res.redirect('/cart?error=Product+not+found');
         if (product.outOfstock || product.stockQuantity < 1) {
+            if (req.headers['x-requested-with'] === 'XMLHttpRequest') {
+                return res.json({ ok: false, message: 'This product is out of stock.' });
+            }
             return res.redirect('/cart?error=Product+is+out+of+stock');
         }
 
@@ -113,7 +116,10 @@ export const addToCart = async (req, res) => {
             const user = await User.findById(userId).lean();
             if (!user?.isPremium) {
                 const back = req.headers.referer || '/cart';
-                return res.redirect(back + (back.includes('?') ? '&' : '?') +
+                if (req.headers['x-requested-with'] === 'XMLHttpRequest') {
+            return res.json({ ok: false, message: 'This is a premium product. Upgrade to add it to your cart.' });
+        }
+        return res.redirect(back + (back.includes('?') ? '&' : '?') +
                     'error=This+is+a+premium+product.+Upgrade+to+a+premium+membership+to+add+it+to+your+cart.');
             }
         }
@@ -121,17 +127,22 @@ export const addToCart = async (req, res) => {
 
         const cart = await Cart.findOne({ userId });
         const MAX_QTY = 6;
-
+        let isNew = true;
         if (cart) {
             const existing = cart.items.find(i => i.productId.toString() === productId);
             if (existing) {
-                
+                isNew = false;
                 if (existing.quantity >= product.stockQuantity) {
+                    if (req.headers['x-requested-with'] === 'XMLHttpRequest') {
+                        return res.json({ ok: false, message: `Only ${product.stockQuantity} unit(s) in stock. You already have the maximum in your cart.` });
+                    }
                     const back = req.headers.referer || '/cart';
                     return res.redirect(back + (back.includes('?') ? '&' : '?') + `error=Only+${product.stockQuantity}+unit(s)+available.+You+already+have+the+maximum+in+your+cart.`);
                 }
-             
                 if (existing.quantity >= MAX_QTY) {
+                    if (req.headers['x-requested-with'] === 'XMLHttpRequest') {
+                        return res.json({ ok: false, message: 'Maximum quantity of 6 per item reached.' });
+                    }
                     const back = req.headers.referer || '/cart';
                     return res.redirect(back + (back.includes('?') ? '&' : '?') + 'error=Maximum+quantity+of+6+per+item+reached');
                 }
@@ -144,11 +155,17 @@ export const addToCart = async (req, res) => {
             await Cart.create({ userId, items: [{ productId }] });
         }
 
+        if (req.headers['x-requested-with'] === 'XMLHttpRequest') {
+            return res.json({ ok: true, message: 'Added to cart', isNew });
+        }
         const back = req.headers.referer || '/cart';
         return res.redirect(back + (back.includes('?') ? '&' : '?') + 'added=1');
 
     } catch (err) {
         console.error('addToCart error:', err.message);
+        if (req.headers['x-requested-with'] === 'XMLHttpRequest') {
+            return res.status(500).json({ ok: false, message: 'Failed to add to cart' });
+        }
         return res.redirect('/cart?error=Failed+to+add+to+cart');
     }
 };
@@ -214,7 +231,7 @@ export const updateCartItem = async (req, res) => {
         const subtotal  = +items.reduce((s, i) => s + i.lineTotal, 0).toFixed(2);
         const shipping  = items.length === 0 ? 0 : subtotal >= FREE_SHIPPING ? 0 : SHIPPING_FEE;
         const total     = +(subtotal + shipping).toFixed(2);
-        const itemCount = items.reduce((n, i) => n + i.quantity, 0);
+        const itemCount = items.length;
 
        
         const offerRes       = await getBestOfferForProduct(product._id, product.categoryId, product.price);
@@ -465,7 +482,7 @@ export const getCartOfferPrices = async (req, res) => {
                         hasOffer:      !!ofr,
                         offerBadge:    ofr
                             ? (ofr.discountType === 'flat'
-                                ? `₹${ofr.discountValue} OFF`
+                                ? `$${ofr.discountValue} OFF`
                                 : `${ofr.discountValue}% OFF`)
                             : null,
                         badgeColor:    ofr?.badgeColorDetail || '#E63946',
@@ -482,3 +499,5 @@ export const getCartOfferPrices = async (req, res) => {
         return res.status(500).json({ ok: false });
     }
 };
+
+

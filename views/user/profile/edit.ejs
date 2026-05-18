@@ -18,14 +18,59 @@
 
         <% if (locals.error) { %><div class="alert alert-danger rounded-0 small"><%= error %></div><% } %>
 
-        <!-- Removed enctype="multipart/form-data" — was causing req.body to be undefined -->
         <form action="/profile/edit" method="POST">
 
-          <!-- Avatar initials display (no upload for now) -->
+          <!-- Avatar with upload trigger -->
           <div class="text-center mb-4">
-            <div class="mx-auto mb-3 d-flex align-items-center justify-content-center bg-danger rounded-circle text-white fw-bold"
-                 style="width:90px;height:90px;font-size:2.2rem;border:3px solid #FFD700;">
-              <%= locals.user ? user.firstName.charAt(0) : 'U' %><%= locals.user ? user.lastName.charAt(0) : '' %>
+            <div class="position-relative mx-auto" style="width:90px;">
+              <% if (locals.user && user.profilePhoto) { %>
+                <img src="<%= user.profilePhoto %>" alt="Profile Photo"
+                     id="avatarPreview"
+                     class="rounded-circle"
+                     style="width:90px;height:90px;object-fit:cover;border:3px solid #FFD700;display:block;">
+              <% } else { %>
+                <div id="avatarInitials"
+                     class="mx-auto d-flex align-items-center justify-content-center bg-danger rounded-circle text-white fw-bold"
+                     style="width:90px;height:90px;font-size:2.2rem;border:3px solid #FFD700;">
+                  <%= locals.user ? user.firstName.charAt(0) : 'U' %><%= locals.user ? user.lastName.charAt(0) : '' %>
+                </div>
+                <img src="" alt="Profile Photo" id="avatarPreview"
+                     class="rounded-circle"
+                     style="width:90px;height:90px;object-fit:cover;border:3px solid #FFD700;display:none;">
+              <% } %>
+              <!-- Camera overlay button -->
+              <button type="button" id="photoPickerBtn"
+                      class="position-absolute bottom-0 end-0 btn btn-sm rounded-circle p-0 d-flex align-items-center justify-content-center"
+                      style="width:28px;height:28px;background:#FFD700;border:2px solid #000;"
+                      title="Change photo">
+                <i class="fas fa-camera" style="font-size:11px;color:#000;"></i>
+              </button>
+            </div>
+            <input type="file" id="photoFileInput" style="display:none;">
+            <p class="text-muted small mt-2 mb-0">Click camera to change photo</p>
+            <div id="photoUploadStatus" class="small mt-1" style="display:none;"></div>
+          </div>
+
+          <!-- Crop Modal -->
+          <div id="cropModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;">
+            <div style="background:#1a1a1a;border:1px solid #444;border-top:4px solid #FFD700;padding:24px;width:min(420px,95vw);">
+              <h6 class="text-white fw-bold mb-3"><i class="fas fa-crop-alt me-2 text-warning"></i>Crop Profile Photo</h6>
+              <!-- Crop area: fixed square container, circular clip -->
+              <div style="position:relative;width:280px;height:280px;margin:0 auto 16px;overflow:hidden;border-radius:50%;border:3px solid #FFD700;background:#000;cursor:crosshair;" id="cropContainer">
+                <img id="cropImage" src="" alt="" draggable="false"
+                     style="position:absolute;top:0;left:0;transform-origin:0 0;user-select:none;-webkit-user-select:none;">
+              </div>
+              <div class="d-flex align-items-center gap-2 mb-3">
+                <i class="fas fa-search-minus text-muted small"></i>
+                <input type="range" id="cropZoom" min="1" max="4" step="0.01" value="1"
+                       class="form-range flex-grow-1" style="accent-color:#FFD700;">
+                <i class="fas fa-search-plus text-muted small"></i>
+              </div>
+              <p class="text-muted small mb-3 text-center">Drag to reposition · Zoom to fit</p>
+              <div class="d-flex gap-2">
+                <button type="button" id="cropCancel" class="btn btn-outline-secondary rounded-0 flex-grow-1">Cancel</button>
+                <button type="button" id="cropSave"   class="btn rounded-0 fw-bold flex-grow-1" style="background:#FFD700;color:#000;">Save Photo</button>
+              </div>
             </div>
           </div>
 
@@ -33,25 +78,34 @@
             <div class="col-md-6">
               <label class="form-label text-danger small fw-bold">FIRST NAME</label>
               <input type="text" name="firstName" class="form-control bg-black border-secondary text-white rounded-0"
-                     value="<%= locals.user ? user.firstName : '' %>" required>
+                     value="<%= locals.user ? user.firstName : '' %>">
             </div>
             <div class="col-md-6">
               <label class="form-label text-danger small fw-bold">LAST NAME</label>
               <input type="text" name="lastName" class="form-control bg-black border-secondary text-white rounded-0"
-                     value="<%= locals.user ? user.lastName : '' %>" required>
+                     value="<%= locals.user ? user.lastName : '' %>">
             </div>
             <div class="col-md-6">
               <label class="form-label text-danger small fw-bold">USERNAME</label>
               <input type="text" name="username" class="form-control bg-black border-secondary text-white rounded-0"
-                     value="<%= locals.user ? user.username : '' %>" required>
+                     value="<%= locals.user ? user.username : '' %>" >
             </div>
             <div class="col-md-6">
               <label class="form-label text-danger small fw-bold">GENDER</label>
-              <select name="gender" class="form-select bg-black border-secondary text-white rounded-0">
+              <select name="gender" id="edit-gender-select"
+                      class="form-select bg-black border-secondary text-white rounded-0"
+                      onchange="toggleEditGenderInput()">
                 <option value="male"   <%= locals.user && user.gender==='male'   ? 'selected' : '' %>>Male</option>
                 <option value="female" <%= locals.user && user.gender==='female' ? 'selected' : '' %>>Female</option>
-                <option value="other"  <%= locals.user && user.gender==='other'  ? 'selected' : '' %>>Other</option>
+                <option value="other"  <%= locals.user && (user.gender==='other' || (user.gender && user.gender!=='male' && user.gender!=='female')) ? 'selected' : '' %>>Other</option>
               </select>
+              <input type="text"
+                     name="genderOther"
+                     id="edit-other-gender-input"
+                     class="form-control bg-black border-secondary text-white rounded-0 mt-2"
+                     placeholder="Please specify"
+                     value="<%= locals.user && user.gender !== 'male' && user.gender !== 'female' ? user.gender : '' %>"
+                     style="display:<%= locals.user && user.gender !== 'male' && user.gender !== 'female' && user.gender ? 'block' : 'none' %>;">
             </div>
             <div class="col-md-6">
               <label class="form-label text-danger small fw-bold">PHONE</label>
@@ -59,9 +113,23 @@
                      value="<%= locals.user ? (user.phone || '') : '' %>">
             </div>
             <div class="col-md-6">
-              <label class="form-label text-danger small fw-bold">EMAIL <span class="text-muted small">(read-only)</span></label>
-              <input type="email" class="form-control bg-black border-secondary text-muted rounded-0"
-                     value="<%= locals.user ? user.email : '' %>" readonly>
+              <label class="form-label text-danger small fw-bold">EMAIL</label>
+              <div class="input-group">
+                <input type="email" class="form-control border-secondary rounded-0"
+                       style="background-color:#1a1a1a; color:#ffffff;"
+                       value="<%= locals.user ? user.email : '' %>" readonly>
+                <% if (locals.user && user.googleId) { %>
+                  <span class="btn btn-outline-secondary rounded-0 px-3 fw-bold disabled"
+                        style="cursor:not-allowed;" title="Email is managed by Google and cannot be changed here.">
+                    <i class="fab fa-google me-1"></i>Google
+                  </span>
+                <% } else { %>
+                  <button class="btn btn-outline-warning rounded-0 px-3 fw-bold"
+                          type="button" id="emailChangeToggle">
+                    <i class="fas fa-edit me-1"></i>Change
+                  </button>
+                <% } %>
+              </div>
             </div>
           </div>
 
@@ -70,10 +138,232 @@
             <a href="/profile" class="btn btn-outline-secondary rounded-0 px-4">Cancel</a>
           </div>
         </form>
+
+        <%# Email Change Panel — OUTSIDE the main form to avoid nested form issues %>
+        <div id="emailChangePanel" style="display:none;" class="mt-3">
+          <div class="bg-black border border-warning p-3" style="border-left:4px solid #FFD700;">
+            <p class="text-warning small fw-bold mb-2"><i class="fas fa-shield-alt me-1"></i>OTP will be sent to the new email address</p>
+            <% if (locals.emailMessage) { %>
+              <div class="alert alert-warning rounded-0 small py-2 mb-2"><%= emailMessage %></div>
+            <% } %>
+            <form action="/profile/request-email-change" method="POST" class="d-flex gap-2 flex-wrap">
+              <input type="email" name="newEmail" placeholder="Enter new email address"
+                     class="form-control border-warning rounded-0 flex-grow-1"
+                     style="background-color:#1a1a1a; color:#ffffff; max-width:320px;" required>
+              <button type="submit" class="btn btn-warning rounded-0 fw-bold text-black">
+                <i class="fas fa-paper-plane me-1"></i>Send OTP
+              </button>
+            </form>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
 </div>
 
 <%- include('../../partials/footer') %>
+
+<script>
+  // ── Gender other toggle ──────────────────────────────────────────────────────
+  function toggleEditGenderInput() {
+    const select = document.getElementById('edit-gender-select');
+    const other  = document.getElementById('edit-other-gender-input');
+    other.style.display = select.value === 'other' ? 'block' : 'none';
+    if (select.value !== 'other') other.value = '';
+  }
+
+  // ── Email change toggle ──────────────────────────────────────────────────────
+  const toggleBtn = document.getElementById('emailChangeToggle');
+  const panel     = document.getElementById('emailChangePanel');
+
+  toggleBtn.addEventListener('click', () => {
+    const isVisible = panel.style.display !== 'none';
+    panel.style.display = isVisible ? 'none' : 'block';
+    toggleBtn.innerHTML = isVisible
+      ? '<i class="fas fa-edit me-1"></i>Change'
+      : '<i class="fas fa-times me-1"></i>Cancel';
+  });
+
+  <% if (locals.emailMessage) { %>
+    panel.style.display = 'block';
+    toggleBtn.innerHTML = '<i class="fas fa-times me-1"></i>Cancel';
+  <% } %>
+
+  // ── Profile photo crop & upload ──────────────────────────────────────────────
+  const photoPickerBtn  = document.getElementById('photoPickerBtn');
+  const photoFileInput  = document.getElementById('photoFileInput');
+  const avatarPreview   = document.getElementById('avatarPreview');
+  const avatarInitials  = document.getElementById('avatarInitials');
+  const uploadStatus    = document.getElementById('photoUploadStatus');
+  const cropModal       = document.getElementById('cropModal');
+  const cropImage       = document.getElementById('cropImage');
+  const cropZoom        = document.getElementById('cropZoom');
+  const cropSave        = document.getElementById('cropSave');
+  const cropCancel      = document.getElementById('cropCancel');
+  const cropContainer   = document.getElementById('cropContainer');
+
+  // State
+  let dragStart = null, imgOffset = { x: 0, y: 0 }, zoom = 1;
+  const CONTAINER_SIZE = 280; // must match CSS width/height of cropContainer
+
+  photoPickerBtn.addEventListener('click', () => photoFileInput.click());
+
+photoFileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/avif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      photoFileInput.value = '';
+      showStatus(`Invalid file type "${file.type || file.name.split('.').pop()}". Only JPEG, PNG, AVIF, and WebP images are allowed.`, 'danger');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => openCropModal(ev.target.result);
+    reader.readAsDataURL(file);
+    photoFileInput.value = '';
+  });
+
+  function openCropModal(src) {
+    cropImage.onload = () => {
+      // Reset state
+      zoom = 1;
+      cropZoom.value = 1;
+      // Fit image to container initially (cover)
+      const scaleToFit = Math.max(CONTAINER_SIZE / cropImage.naturalWidth, CONTAINER_SIZE / cropImage.naturalHeight);
+      zoom = scaleToFit;
+      cropZoom.min  = scaleToFit;
+      cropZoom.max  = scaleToFit * 4;
+      cropZoom.step = scaleToFit * 0.01;
+      cropZoom.value = scaleToFit;
+      // Center image
+      imgOffset.x = (CONTAINER_SIZE - cropImage.naturalWidth  * zoom) / 2;
+      imgOffset.y = (CONTAINER_SIZE - cropImage.naturalHeight * zoom) / 2;
+      applyTransform();
+    };
+    cropImage.src = src;
+    cropModal.style.display = 'flex';
+  }
+
+  function applyTransform() {
+    cropImage.style.width  = (cropImage.naturalWidth  * zoom) + 'px';
+    cropImage.style.height = (cropImage.naturalHeight * zoom) + 'px';
+    cropImage.style.left   = imgOffset.x + 'px';
+    cropImage.style.top    = imgOffset.y + 'px';
+  }
+
+  // Zoom slider
+  cropZoom.addEventListener('input', () => {
+    const newZoom    = parseFloat(cropZoom.value);
+    // Keep center of container fixed while zooming
+    const cx = CONTAINER_SIZE / 2;
+    const cy = CONTAINER_SIZE / 2;
+    imgOffset.x = cx - (cx - imgOffset.x) * (newZoom / zoom);
+    imgOffset.y = cy - (cy - imgOffset.y) * (newZoom / zoom);
+    zoom = newZoom;
+    clampOffset();
+    applyTransform();
+  });
+
+  // Drag to reposition
+  cropContainer.addEventListener('mousedown',  startDrag);
+  cropContainer.addEventListener('touchstart', startDrag, { passive: true });
+  window.addEventListener('mousemove',  onDrag);
+  window.addEventListener('touchmove',  onDrag, { passive: false });
+  window.addEventListener('mouseup',   endDrag);
+  window.addEventListener('touchend',  endDrag);
+
+  function startDrag(e) {
+    const pt = e.touches ? e.touches[0] : e;
+    dragStart = { mx: pt.clientX, my: pt.clientY, ox: imgOffset.x, oy: imgOffset.y };
+  }
+  function onDrag(e) {
+    if (!dragStart) return;
+    if (e.cancelable) e.preventDefault();
+    const pt = e.touches ? e.touches[0] : e;
+    imgOffset.x = dragStart.ox + (pt.clientX - dragStart.mx);
+    imgOffset.y = dragStart.oy + (pt.clientY - dragStart.my);
+    clampOffset();
+    applyTransform();
+  }
+  function endDrag() { dragStart = null; }
+
+  function clampOffset() {
+    const iw = cropImage.naturalWidth  * zoom;
+    const ih = cropImage.naturalHeight * zoom;
+    // Don't let image edges go inside container (keep it covering fully)
+    imgOffset.x = Math.min(0, Math.max(CONTAINER_SIZE - iw, imgOffset.x));
+    imgOffset.y = Math.min(0, Math.max(CONTAINER_SIZE - ih, imgOffset.y));
+  }
+
+  cropCancel.addEventListener('click', () => {
+    cropModal.style.display = 'none';
+  });
+
+  cropSave.addEventListener('click', async () => {
+    // Draw the visible circular region onto a 300×300 canvas
+    const canvas = document.createElement('canvas');
+    canvas.width  = 300;
+    canvas.height = 300;
+    const ctx = canvas.getContext('2d');
+
+    // Circular clip
+    ctx.beginPath();
+    ctx.arc(150, 150, 150, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+
+    // Scale from container (280px) to output (300px)
+    const scale = 300 / CONTAINER_SIZE;
+    ctx.drawImage(
+      cropImage,
+      imgOffset.x * scale,
+      imgOffset.y * scale,
+      cropImage.naturalWidth  * zoom * scale,
+      cropImage.naturalHeight * zoom * scale
+    );
+
+    const dataURL = canvas.toDataURL('image/jpeg', 0.88);
+    cropModal.style.display = 'none';
+    await uploadPhoto(dataURL);
+  });
+
+  async function uploadPhoto(dataURL) {
+    showStatus('<i class="fas fa-spinner fa-spin me-1"></i>Uploading...', 'warning');
+    cropSave.disabled       = true;
+    photoPickerBtn.disabled = true;
+
+    try {
+      const resp = await fetch('/profile/upload-photo', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ imageData: dataURL }),
+      });
+      const data = await resp.json();
+
+      if (data.ok) {
+        // Show new photo immediately everywhere on page
+        avatarPreview.src          = data.url;
+        avatarPreview.style.display = 'block';
+        if (avatarInitials) avatarInitials.style.display = 'none';
+        showStatus('<i class="fas fa-check-circle me-1"></i>Photo updated!', 'success');
+      } else {
+        showStatus(data.message || 'Upload failed.', 'danger');
+      }
+    } catch {
+      showStatus('Network error. Please try again.', 'danger');
+    } finally {
+      cropSave.disabled       = false;
+      photoPickerBtn.disabled = false;
+    }
+  }
+
+  function showStatus(html, type) {
+    uploadStatus.innerHTML  = `<span class="text-${type}">${html}</span>`;
+    uploadStatus.style.display = 'block';
+    if (type === 'success') setTimeout(() => { uploadStatus.style.display = 'none'; }, 3000);
+  }
+</script>
 </body></html>

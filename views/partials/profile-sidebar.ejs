@@ -31,10 +31,16 @@
 
   <div class="text-center mb-3">
     <% if (locals.user) { %>
-      <div class="mx-auto mb-3 d-flex align-items-center justify-content-center bg-danger rounded-circle fw-bold"
-           style="width:90px; height:90px; font-size:2.2rem; border:3px solid #FFD700; color:#ffffff;">
-        <%= locals.user.firstName.charAt(0) %><%= locals.user.lastName.charAt(0) %>
-      </div>
+      <% if (locals.user.profilePhoto) { %>
+        <img src="<%= locals.user.profilePhoto %>" alt="Profile Photo"
+             class="rounded-circle mx-auto d-block mb-3"
+             style="width:90px;height:90px;object-fit:cover;border:3px solid #FFD700;">
+      <% } else { %>
+        <div class="mx-auto mb-3 d-flex align-items-center justify-content-center bg-danger rounded-circle fw-bold"
+             style="width:90px; height:90px; font-size:2.2rem; border:3px solid #FFD700; color:#ffffff;">
+          <%= locals.user.firstName.charAt(0) %><%= locals.user.lastName.charAt(0) %>
+        </div>
+      <% } %>
       <h5 class="mb-1 fw-bold" style="color:#ffffff;">
         <%= locals.user.firstName %> <%= locals.user.lastName %>
       </h5>

@@ -310,7 +310,7 @@
                         <div class="text-white-50 small">
                           Your return has been accepted.
                           <% if (order.paymentMethod !== 'cod') { %>
-                            A refund of <span class="text-info fw-bold">$<%= item.lineTotal.toFixed(2) %></span> has been credited to your wallet.
+                         
                           <% } %>
                         </div>
                       <% } else if (item.returnDeniedReason) { %>
@@ -399,6 +399,10 @@
                 const isFullyTerminal = order.items.every(i =>
                   ['cancelled','returned'].includes(i.itemStatus)
                 );
+                const activeCount = order.items.filter(i => !['cancelled','returned'].includes(i.itemStatus)).length;
+                const pShare = order.items.length > 0 ? (order.discount || 0) / order.items.length : 0;
+                const dDiscount = +(pShare * activeCount).toFixed(2);
+                const actualTotal = Math.max(0, order.subtotal + order.shippingFee - dDiscount);
               %>
               <div class="d-flex justify-content-between small text-white-50 mb-2">
                 <span>Subtotal</span>
@@ -408,11 +412,17 @@
                 <span>Shipping</span>
                 <span><%= isFullyTerminal ? '$0.00' : (order.shippingFee === 0 ? 'FREE' : '$' + order.shippingFee.toFixed(2)) %></span>
               </div>
+             <% if (!isFullyTerminal && dDiscount > 0) { %>
+              <div class="d-flex justify-content-between small mb-2" style="color:#75b798;">
+                <span><i class="fas fa-tag me-1"></i>Coupon Discount</span>
+                <span>-$<%= dDiscount.toFixed(2) %></span>
+              </div>
+              <% } %>
               <hr class="border-secondary my-2">
               <div class="d-flex justify-content-between fw-bold">
                 <span>Total</span>
                 <span class="<%= isFullyTerminal ? 'text-white-50 text-decoration-line-through' : 'text-danger' %>">
-                  $<%= isFullyTerminal ? '0.00' : order.total.toFixed(2) %>
+                  $<%= isFullyTerminal ? '0.00' : actualTotal.toFixed(2) %>
                 </span>
               </div>
               <% if (isFullyTerminal) { %>

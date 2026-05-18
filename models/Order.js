@@ -13,6 +13,7 @@ const orderItemSchema = new mongoose.Schema({
     price:        { type: Number, required: true },
     quantity:     { type: Number, required: true, min: 1 },
     lineTotal:    { type: Number, required: true },
+   
 
     // Per-ITEM status (user-facing: cancel/return per product)
     itemStatus: {
@@ -55,7 +56,7 @@ const orderSchema = new mongoose.Schema({
     subtotal:    { type: Number, required: true },
     shippingFee: { type: Number, default: 0 },
     total:       { type: Number, required: true },
-
+     discount:    { type: Number, default: 0 },
     shippingAddress: {
         addressLane1: String,
         addressLane2: String,

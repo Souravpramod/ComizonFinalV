@@ -111,12 +111,15 @@ export const createCoupon = async (req, res) => {
   
     if (errors.length)
         return res.status(400).json({ ok: false, errors });
+    
+    if (req.body._validateOnly === '1')
+        return res.json({ ok: true });
 
     try {
         const existing = await Coupon.findOne({ code: cleanCode });
         if (existing)
             return res.status(400).json({ ok: false, errors: ['A coupon with this code already exists.'] });
-
+            console.log(cleanCode);
         await Coupon.create({
             code:                cleanCode,
             description:         (description || '').trim(),
@@ -171,7 +174,7 @@ export const updateCoupon = async (req, res) => {
     const minAmt = parseFloat(minOrderAmount) || 0;
     if (minAmt < 0) errors.push('Min order amount cannot be negative.');
     if (discountType === 'flat' && dv > 0 && minAmt > 0 && dv >= minAmt)
-        errors.push(`Flat discount (₹${dv}) cannot be ≥ minimum order amount (₹${minAmt}).`);
+        errors.push(`Flat discount ($${dv}) cannot be ≥ minimum order amount ($${minAmt}).`);
  
     const perUserLimit = parseInt(usageLimitPerUser) || 1;
     const totalLimit   = usageLimitTotal ? parseInt(usageLimitTotal) : null;
@@ -263,3 +266,6 @@ export const deleteCoupon = async (req, res) => {
         return res.status(500).json({ ok: false, message: err.message });
     }
 };
+
+
+

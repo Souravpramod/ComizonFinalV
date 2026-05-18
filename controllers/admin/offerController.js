@@ -13,7 +13,8 @@ export const getOffers = async (req, res) => {
         const query = {};
         if (search) {
             const safe = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            query.title = { $regex: safe, $options: 'i' };
+            query.title = { $regex: `.*${safe}.*`, $options: 'i' };
+            
         }
         if (offerType) query.offerType = offerType;
         if (status === 'active')   query.isActive = true;

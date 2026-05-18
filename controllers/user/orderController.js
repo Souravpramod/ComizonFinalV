@@ -67,6 +67,11 @@ export const getCheckout = async (req, res) => {
                     { upsert: true }
                 );
 
+                let retryCouponCode = null;
+                if (retryOrder.couponId) {
+                    const retryCoupon = await Coupon.findById(retryOrder.couponId).lean();
+                    retryCouponCode = retryCoupon?.code || null;
+                }
                 
                 req.session.pendingOrderData = {
                     retryOrderId:    retryOrder._id.toString(),
@@ -79,7 +84,7 @@ export const getCheckout = async (req, res) => {
                     total:           retryOrder.total,
                     shippingAddress: retryOrder.shippingAddress,
                     couponId:        retryOrder.couponId ? retryOrder.couponId.toString() : null,
-                 
+                    couponCode:      retryCouponCode,
                     qtyAdjusted:     qtyAdjusted.length ? qtyAdjusted : null,
                 };
             }
@@ -136,7 +141,7 @@ export const getCheckout = async (req, res) => {
                 hasOffer:       !!offerResult,
                 offerBadge:     offerResult
                                   ? (offerResult.discountType === 'flat'
-                                      ? `₹${offerResult.discountValue} OFF`
+                                      ? `$${offerResult.discountValue} OFF`
                                       : `${offerResult.discountValue}% OFF`)
                                   : null,
                 quantity:       i.quantity,
@@ -178,6 +183,9 @@ export const getCheckout = async (req, res) => {
             availableCoupons,
             walletBalance,
             qtyAdjusted,
+            isRetry: !!(req.query.retryOrderId && req.session.pendingOrderData?.isRetry),
+            retryOrderId: req.query.retryOrderId || null,
+            retryCouponCode: req.session.pendingOrderData?.couponCode || null,
             error:   req.query.error   || null,
             success: req.query.success || null,
         });
@@ -558,8 +566,12 @@ export const cancelItem = async (req, res) => {
     try {
         const order = await Order.findById(orderId).populate('items.productId');
 
+        
+
         if (!order || order.userId.toString() !== req.session.user.id)
             return res.redirect('/orders?error=Order+not+found');
+
+        
 
         const item = order.items.id(itemId);
         if (!item) return res.redirect(`/orders/${orderId}?error=Item+not+found`);
@@ -572,6 +584,7 @@ export const cancelItem = async (req, res) => {
         const paidMethods = ['online', 'wallet'];
         const stockWasDeducted = order.paymentStatus !== 'failed';
 
+        // 1. RESTORE STOCK
         if (stockWasDeducted) {
             await Product.findByIdAndUpdate(item.productId, {
                 $inc: { stockQuantity: item.quantity },
@@ -579,63 +592,72 @@ export const cancelItem = async (req, res) => {
             });
         }
 
-      
-        const refundAmount     = +item.lineTotal.toFixed(2);
-        const originalShipping = order.shippingFee;
+        // 2. PRECISE REFUND CALCULATION
+        // Divide by total item count always — share was fixed at order time equally across all items
+        const totalCouponDiscount = order.discount || 0;
+        
+        const originalItemCount = order.items.length;
+        const perItemCouponShare = originalItemCount > 0
+            ? +(totalCouponDiscount / originalItemCount).toFixed(2)
+            : 0;
 
-    
-        const otherItems        = order.items.filter(i => i._id.toString() !== itemId);
-        const othersAllTerminal = otherItems.every(i =>
+        const refundAmount = +(item.lineTotal - perItemCouponShare).toFixed(2);
+
+        const otherItems = order.items.filter(i => i._id.toString() !== itemId);
+        const othersAllTerminal = otherItems.length === 0 || otherItems.every(i =>
             ['cancelled', 'returned'].includes(i.itemStatus)
         );
-        const shippingRefund = othersAllTerminal ? originalShipping : 0;
-        const totalRefund    = +(refundAmount + shippingRefund).toFixed(2);
 
-        item.itemStatus   = 'cancelled';
+        const shippingRefund = othersAllTerminal ? (order.shippingFee || 0) : 0;
+        const totalRefund = +Math.max(0, refundAmount + shippingRefund).toFixed(2);
+
+        // 3. UPDATE ITEM STATE
+        item.itemStatus = 'cancelled';
         item.cancelReason = reason;
-        item.attention    = 1;
+        item.attention = 1;
         item.unitStatuses.forEach(u => { u.status = 'cancelled'; });
+        item.lineTotal = 0;
 
-   
-        const remainingStatuses = order.items.map(i => i.itemStatus);
-        const allTerminal  = remainingStatuses.every(s => ['cancelled', 'returned'].includes(s));
-        const allCancelled = remainingStatuses.every(s => s === 'cancelled');
-        if (allTerminal) {
-            order.status        = allCancelled ? 'cancelled' : 'returned';
-            order.paymentStatus = paidMethods.includes(order.paymentMethod) ? 'refunded' : order.paymentStatus;
-        }
-
-        const activeQty   = item.unitStatuses.filter(u => u.status !== 'cancelled').length;
-        item.lineTotal    = +(item.price * activeQty).toFixed(2);  
-
-
+        // 4. RECALCULATE ORDER TOTALS
         const terminalStatuses = ['cancelled', 'returned'];
         const activeItems = order.items.filter(i => !terminalStatuses.includes(i.itemStatus));
-        const newSubtotal = +activeItems.reduce((s, i) => s + i.lineTotal, 0).toFixed(2);
 
-       
-        const newShipping   = activeItems.length === 0 ? 0
-                            : newSubtotal >= FREE_SHIPPING ? 0 : SHIPPING_FEE;
-        order.subtotal      = newSubtotal;
-        order.shippingFee   = newShipping;
-        order.total         = +(newSubtotal + newShipping).toFixed(2);
-
-        const allStatuses = order.items.map(i => i.itemStatus);
-        if (allStatuses.every(s => s === 'cancelled')) {
-            order.status = 'cancelled';
-            order.paymentStatus = 'refunded';
-
-            order.items.forEach(i => { i.attention = 1; });
+        if (activeItems.length === 0) {
+            order.subtotal    = 0;
+            order.shippingFee = 0;
+            order.discount    = 0;
+            order.total       = 0;
         } else {
-            const activeItems = order.items.filter(i => i.itemStatus !== 'cancelled');
-            const hasDelivered = activeItems.some(i => i.itemStatus === 'delivered');
-            order.status = hasDelivered ? 'delivered' : activeItems[0]?.itemStatus || 'processing';
+            const newSubtotal = +activeItems.reduce((s, i) => s + i.lineTotal, 0).toFixed(2);
+            const newShipping = newSubtotal >= FREE_SHIPPING ? 0 : (order.shippingFee > 0 ? order.shippingFee : 0);
+            order.subtotal    = newSubtotal;
+            order.shippingFee = newShipping;
+            order.total       = +(newSubtotal + newShipping).toFixed(2);
         }
 
-        
+        // 5. UPDATE OVERALL ORDER STATUS
+        const allStatuses = order.items.map(i => i.itemStatus);
+        const allCancelled = allStatuses.every(s => s === 'cancelled');
+        const allTerminal  = allStatuses.every(s => terminalStatuses.includes(s));
+
+        if (allCancelled) {
+            order.status = 'cancelled';
+        } else if (allTerminal) {
+            order.status = 'returned';
+        } else {
+            const hasDelivered = activeItems.some(i => i.itemStatus === 'delivered');
+            order.status = hasDelivered ? 'delivered' : 'processing';
+        }
+
+        if (allTerminal && paidMethods.includes(order.paymentMethod)) {
+            order.paymentStatus = 'refunded';
+        }
+
         await order.save();
 
-        if (totalRefund > 0 && paidMethods.includes(order.paymentMethod)) {
+        // 6. WALLET REFUND
+        const shouldRefund = totalRefund > 0 && stockWasDeducted && paidMethods.includes(order.paymentMethod);
+        if (shouldRefund) {
             await refundToWallet(
                 order.userId.toString(),
                 totalRefund,
@@ -651,7 +673,7 @@ export const cancelItem = async (req, res) => {
         }
 
         const successMsg = paidMethods.includes(order.paymentMethod) && totalRefund > 0
-            ? `Item+cancelled.+₹${totalRefund.toFixed(2)}+refunded+to+your+wallet.`
+            ? `Item+cancelled.+$${totalRefund.toFixed(2)}+refunded+to+your+wallet.`
             : `Item+cancelled+successfully`;
         return res.redirect(`/orders/${orderId}?success=${successMsg}`);
 
@@ -704,7 +726,19 @@ export const cancelOrder = async (req, res) => {
         const paidMethods    = ['online', 'wallet'];
         const itemsRefund    = +order.items.reduce((s, i) => s + i.lineTotal, 0).toFixed(2);
         const shippingRefund = order.shippingFee || 0;
-        const refundAmount   = +(itemsRefund + shippingRefund).toFixed(2);
+        let refundAmount;
+
+        if (order.couponId === null) {
+            
+            refundAmount = +(itemsRefund + shippingRefund).toFixed(2);
+        } else {
+            const coupon = await Coupon.findById(order.couponId);
+            const couponDiscount = order.couponId ? (order.discount || 0) : 0;
+            refundAmount = +(itemsRefund + shippingRefund - couponDiscount).toFixed(2);
+        }
+
+
+        refundAmount = Math.max(0, refundAmount);
 
         order.subtotal    = 0;
         order.shippingFee = 0;
@@ -722,7 +756,7 @@ export const cancelOrder = async (req, res) => {
         }
 
         const successMsg = paidMethods.includes(order.paymentMethod) && refundAmount > 0
-            ? `Order+cancelled.+₹${refundAmount.toFixed(2)}+refunded+to+your+wallet.`
+            ? `Order+cancelled.+$${refundAmount.toFixed(2)}+refunded+to+your+wallet.`
             : `Order+cancelled+successfully`;
         return res.redirect(`/orders/${orderId}?success=${successMsg}`);
 
@@ -1040,15 +1074,45 @@ export const downloadInvoice = async (req, res) => {
             return res.status(403).send('Access denied');
 
         const a = order.shippingAddress || {};
-        const itemRows = order.items.map(item => `
-            <tr>
-                <td>${item.productName}</td>
+
+        // Compute original lineTotal per item from price (not stored lineTotal which gets zeroed)
+        const itemRows = order.items.map(item => {
+            const isCancelled = item.itemStatus === 'cancelled';
+            const isReturned  = item.itemStatus === 'returned';
+            const statusLabel = isCancelled ? ' <span style="color:#dc3545;font-size:0.75rem;">(Cancelled)</span>'
+                              : isReturned  ? ' <span style="color:#888;font-size:0.75rem;">(Returned)</span>'
+                              : '';
+            const rowStyle = (isCancelled || isReturned) ? 'opacity:0.5;' : '';
+            return `
+            <tr style="${rowStyle}">
+                <td>${item.productName}${statusLabel}</td>
                 <td>${item.sku || '—'}</td>
                 <td style="text-align:center;">${item.quantity}</td>
                 <td style="text-align:right;">$${item.price.toFixed(2)}</td>
-                <td style="text-align:right;">$${item.lineTotal.toFixed(2)}</td>
-            </tr>
-        `).join('');
+                <td style="text-align:right;">${(isCancelled || isReturned) ? '<span style="color:#aaa;">—</span>' : '$' + item.lineTotal.toFixed(2)}</td>
+            </tr>`;
+        }).join('');
+
+        const isFullyTerminal = order.items.every(i => ['cancelled','returned'].includes(i.itemStatus));
+        const activeCount = order.items.filter(i => !['cancelled','returned'].includes(i.itemStatus)).length;
+        const pShare = order.items.length > 0 ? (order.discount || 0) / order.items.length : 0;
+        const dDiscount = +(pShare * activeCount).toFixed(2);
+        const actualTotal = Math.max(0, order.subtotal + order.shippingFee - dDiscount);
+
+        // Sum all refunds credited to wallet for this specific order
+        const wallet = await Wallet.findOne({ userId: order.userId }).lean();
+        const refundedAmount = wallet
+            ? +wallet.transactions
+                .filter(t =>
+                    t.type   === 'credit' &&
+                    t.reason === 'order_refund' &&
+                    t.orderId?.toString() === order._id.toString()
+                )
+                .reduce((s, t) => s + t.amount, 0)
+                .toFixed(2)
+            : 0;
+
+        const invoiceTotal = isFullyTerminal ? 0 : actualTotal;
 
         const html = `<!DOCTYPE html>
 <html>
@@ -1110,7 +1174,7 @@ export const downloadInvoice = async (req, res) => {
     </div>
     <div class="section">
       <h4>Order Status</h4>
-      <p><strong>${order.status.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</strong><br>
+      <p><strong>${order.status.replace(/_/g,' ').replace(/\\b\w/g,c=>c.toUpperCase())}</strong><br>
          Payment: ${order.paymentStatus.charAt(0).toUpperCase()+order.paymentStatus.slice(1)}</p>
     </div>
   </div>
@@ -1130,7 +1194,9 @@ export const downloadInvoice = async (req, res) => {
   <table class="totals-table">
     <tr><td>Subtotal</td><td style="text-align:right;">$${order.subtotal.toFixed(2)}</td></tr>
     <tr><td>Shipping</td><td style="text-align:right;">${order.shippingFee === 0 ? 'FREE' : '$' + order.shippingFee.toFixed(2)}</td></tr>
-    <tr class="grand"><td><strong>Grand Total</strong></td><td style="text-align:right;"><strong>$${order.total.toFixed(2)}</strong></td></tr>
+    ${(!isFullyTerminal && dDiscount > 0) ? `<tr><td style="color:#28a745;">Coupon Discount</td><td style="text-align:right;color:#28a745;">-$${dDiscount.toFixed(2)}</td></tr>` : ''}
+    ${refundedAmount > 0 ? `<tr><td style="color:#fd9843;">Refunded so far</td><td style="text-align:right;color:#fd9843;">$${refundedAmount.toFixed(2)}</td></tr>` : ''}
+    <tr class="grand"><td><strong>Current Total</strong></td><td style="text-align:right;"><strong>$${invoiceTotal.toFixed(2)}</strong></td></tr>
   </table>
 
   <div class="footer">

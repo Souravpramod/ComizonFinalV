@@ -32,7 +32,7 @@ export const getSalesReport = async (req, res) => {
 
         const matchStage = {
             orderedAt:     { $gte: dateFrom, $lte: dateTo },
-            status:        { $nin: ['cancelled', 'returned'] },
+            status:        'delivered',
             paymentStatus: { $in: ['paid', 'refunded'] },
         };
 
@@ -134,7 +134,7 @@ export const downloadReport = async (req, res) => {
 
         const orders = await Order.find({
             orderedAt:     { $gte: dateFrom, $lte: dateTo },
-            status:        { $nin: ['cancelled', 'returned'] },
+            status:        'delivered',
             paymentStatus: { $in: ['paid', 'refunded'] },
         })
             .populate('userId', 'firstName lastName email')
@@ -220,8 +220,8 @@ function generatePDF(res, rows, period, dateFrom, dateTo) {
 
         <div class="summary">
             <span>Orders: <strong>${rows.length}</strong></span>
-            <span>Total Revenue: <strong>₹${total.toFixed(2)}</strong></span>
-            <span>Total Discounts: <strong>₹${disc.toFixed(2)}</strong></span>
+            <span>Total Revenue: <strong>$${total.toFixed(2)}</strong></span>
+            <span>Total Discounts: <strong>$${disc.toFixed(2)}</strong></span>
         </div>
 
         <table>

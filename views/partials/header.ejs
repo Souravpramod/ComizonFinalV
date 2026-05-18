@@ -46,7 +46,7 @@
       class="d-none d-lg-flex search-bar-group"
       id="navbar-search-form"
       style="margin:0;">
-    <div class="input-group">
+    <div class="input-group position-relative">
         <input type="text"
                name="search"
                id="navbar-search-input"
@@ -54,6 +54,15 @@
                placeholder="Search..."
                autocomplete="off"
                value="<%= typeof locals.search === 'string' ? locals.search : '' %>">
+        <% if (typeof locals.search === 'string' && locals.search.trim()) { %>
+        <button type="button"
+                class="btn btn-link text-secondary position-absolute end-0 top-50 translate-middle-y me-5 pe-1 z-3 border-0 p-0"
+                id="navbar-search-clear"
+                title="Clear search"
+                onclick="window.location.href='/'">
+            <i class="fas fa-times"></i>
+        </button>
+        <% } %>
         <button class="btn btn-outline-danger" type="submit">
             <i class="fas fa-search"></i>
         </button>
